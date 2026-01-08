@@ -32,7 +32,7 @@ def test_function(mytimer: func.TimerRequest) -> None:
     if mytimer.past_due:
         logging.info("The timer is past due")
 
-    auth = get_auth_service()
+    # auth = get_auth_service()
     # result = email_func.process_new_inreach_message(auth)
 
     # if result:
