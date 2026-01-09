@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import datetime
 from src import configs
 from src import saildoc_functions as saildoc_func
@@ -24,7 +25,7 @@ async def process_new_inreach_message():
 
     if not messages or not messages.value:
         return None
-
+    
     unanswered_ids = {msg.id for msg in messages.value if msg.id not in previous_messages}
     if not unanswered_ids:
         return None
@@ -33,12 +34,12 @@ async def process_new_inreach_message():
     garmin_reply_url = None
 
     for message_id in unanswered_ids:
-        print("New message received:", message_id)
+        logging.info("New message received: %s", message_id)
         try:
             grib_path, garmin_reply_url = await _request_and_process_saildocs_grib(message_id, mail)
-            print(f"Answered message {message_id}")
+            logging.info("Answered message %s", message_id)
         except Exception as e:
-            print(f"Error processing message {message_id}: {e}")
+            logging.error("Error processing message %s: %s", message_id, e)
         finally:
             _append_to_previous_messages(message_id)
 
