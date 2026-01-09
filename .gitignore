@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Grib files
+*.grb
+
 # C extensions
 *.so
 

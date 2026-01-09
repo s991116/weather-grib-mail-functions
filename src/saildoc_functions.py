@@ -33,20 +33,47 @@ def encode_saildocs_grib_file(file_path):
 
 
 
-def wait_for_saildocs_response(auth_service, time_sent):
-    """Wait for a SailDocs response and verify if the response matches the request timestamp.
+import asyncio
+import logging
+from datetime import datetime, timezone
+from src import configs
+
+
+async def wait_for_saildocs_response(mail, time_sent, timeout_seconds=600, poll_interval=10):
+    """
+    Wait for a Saildocs response email received after time_sent.
 
     Args:
-    auth_service: Authenticated Gmail API service instance.
-    time_sent (datetime): Timestamp of the SailDocs request.
+        mail (GraphMailService): Initialized GraphMailService
+        time_sent (datetime): Timestamp when Saildocs request was sent (UTC)
+        timeout_seconds (int): Max wait time
+        poll_interval (int): Seconds between polls
 
     Returns:
-    dict or None: Returns the latest email response or None if no valid response is received within the timeout.
+        Message | None: Microsoft Graph Message or None on timeout
     """
-    for _ in range(60): # loop for a maximum of 60 iterations (10 seconds sleep each)
-        time.sleep(10) # sleep for 10 seconds before checking for new emails
-        last_response = email_func._search_gmail_messages(auth_service, configs.SAILDOCS_RESPONSE_EMAIL)[0]
-        time_received = pd.to_datetime(auth_service.users().messages().get(userId='me', id=last_response['id']).execute()['payload']['headers'][-1]['value'].split('(UTC)')[0])
-        if time_received > time_sent: # compare the received timestamp with the timestamp of the SailDocs request
-            return last_response
+    deadline = datetime.now(timezone.utc).timestamp() + timeout_seconds
+
+    while datetime.now(timezone.utc).timestamp() < deadline:
+        logging.info("Polling for Saildocs response...")
+
+        messages = await mail.search_messages(
+            user_id=configs.MAILBOX,
+            sender_email=configs.SAILDOCS_RESPONSE_EMAIL,
+            top=5
+        )
+
+        if messages and messages.value:
+            logging.info("Saildocs messages receives from %s", configs.SAILDOCS_RESPONSE_EMAIL)
+            for msg in messages.value:
+                received = msg.received_date_time
+                logging.info("Saildocs message received %s", received)
+
+                if received and received.replace(tzinfo=timezone.utc) > time_sent.replace(tzinfo=timezone.utc):
+                    logging.info("Saildocs response received: %s", msg.id)
+                    return msg
+
+        await asyncio.sleep(poll_interval)
+
+    logging.warning("Timeout waiting for Saildocs response")
     return None

@@ -1,6 +1,8 @@
 import asyncio
+import re
 import logging
 from datetime import datetime
+from html import unescape
 from src import configs
 from src import saildoc_functions as saildoc_func
 from src import inreach_functions as inreach_func
@@ -17,7 +19,7 @@ async def process_new_inreach_message():
     previous_messages = _load_previous_messages()
     mail = GraphMailService()
 
-    # Hent de seneste mails fra SERVICE_EMAIL
+    # Fetch the latest messages from SERVICE_EMAIL
     messages = await mail.search_messages(
         user_id=configs.MAILBOX,
         sender_email=configs.SERVICE_EMAIL
@@ -49,10 +51,15 @@ async def process_new_inreach_message():
 # INTERNAL HELPERS
 # =========================
 async def _request_and_process_saildocs_grib(message_id, mail: GraphMailService):
-    # Hent tekst og reply URL
+    # Fetch message text and reply URL
     msg_text, garmin_reply_url = await _fetch_message_text_and_url(message_id, mail)
 
-    # Send GRIB request til Saildocs
+    logging.info(
+        "Mail msg sent to Saildocs server: %r",
+        msg_text
+    )
+
+    # Send GRIB request to Saildocs
     await mail.send_mail(
         sender=configs.MAILBOX,
         to=configs.SAILDOCS_EMAIL_QUERY,
@@ -61,8 +68,9 @@ async def _request_and_process_saildocs_grib(message_id, mail: GraphMailService)
     )
 
     time_sent = datetime.utcnow()
-    # Vent på Saildocs svar (synkron funktion i saildoc_functions)
-    last_response = saildoc_func.wait_for_saildocs_response(time_sent)
+    # Wait for Saildocs response (synchronous function in saildoc_functions)   
+    last_response = await saildoc_func.wait_for_saildocs_response(mail, time_sent)
+
     if not last_response:
         inreach_func.send_reply_to_inreach(garmin_reply_url, "Saildocs timeout")
         return None
@@ -92,21 +100,54 @@ async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
         .by_message_id(message_id) \
         .get()
 
-    decoded = message.body.content.lower()
-    msg_text = decoded.split("\r")[0]
+    body = message.body.content or ""
+    body_type = message.body.content_type
+
+    logging.info("Message body type: %s", body_type)
+
+    if body_type == "html":
+        decoded = _html_to_text(body).lower()
+    else:
+        decoded = body.lower()
+
+    logging.info("Decoded message content:\n%s", decoded)
+
+    # First non-empty line
+    msg_text = next(
+        (line.strip() for line in decoded.splitlines() if line.strip()),
+        ""
+    )
 
     garmin_reply_url = next(
-        (line.replace("\r", "") for line in decoded.split("\n")
+        (line.strip() for line in decoded.splitlines()
          if configs.BASE_GARMIN_REPLY_URL in line),
         None
     )
 
     return msg_text, garmin_reply_url
 
+
+def _html_to_text(html: str) -> str:
+    """
+    Very lightweight HTML → text conversion.
+    Good enough for emails and Saildocs commands.
+    """
+    # Remove scripts and styles
+    html = re.sub(r"<(script|style).*?>.*?</\1>", "", html, flags=re.S | re.I)
+    # Remove all HTML tags
+    text = re.sub(r"<[^>]+>", "", html)
+    # Decode HTML entities (&nbsp; etc.)
+    text = unescape(text)
+    return text
+
+
 # =========================
 # MESSAGE TRACKING
 # =========================
 def _load_previous_messages():
+    """
+    Load IDs of previously processed messages.
+    """
     try:
         with open(configs.PREVIOUS_MESSAGES_FILE, "r") as f:
             return set(f.read().splitlines())
@@ -114,5 +155,7 @@ def _load_previous_messages():
         return set()
 
 def _append_to_previous_messages(message_id):
-    with open(configs.PREVIOUS_MESSAGES_FILE, "a") as f:
-        f.write(f"{message_id}\n")
+    """
+    Append a new message ID to the tracking file.
+    """
+    with open(configs.PREVIOUS_MESSAGES_
