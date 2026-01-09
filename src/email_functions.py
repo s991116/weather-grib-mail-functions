@@ -72,7 +72,9 @@ async def _request_and_process_saildocs_grib(message_id, mail: GraphMailService)
     last_response = await saildoc_func.wait_for_saildocs_response(mail, time_sent)
 
     if not last_response:
-        inreach_func.send_reply_to_inreach(garmin_reply_url, "Saildocs timeout")
+        # Send single message to InReach (timeout)
+        logging.info("Sail docs timeout messages to garmin_inreacy.")
+        await inreach_func.send_messages_to_inreach(garmin_reply_url, "Saildocs timeout")
         return None
 
     # Download GRIB attachment
@@ -83,7 +85,9 @@ async def _request_and_process_saildocs_grib(message_id, mail: GraphMailService)
     )
 
     if not grib_path:
-        inreach_func.send_reply_to_inreach(garmin_reply_url, "Could not download GRIB file")
+        # Send single message to InReach (GRIB download failure)
+        logging.info("Could not download GRIB file.")
+        await inreach_func.send_messages_to_inreach(garmin_reply_url, "Could not download GRIB file")
         return None
 
     return grib_path, garmin_reply_url
@@ -91,7 +95,7 @@ async def _request_and_process_saildocs_grib(message_id, mail: GraphMailService)
 
 async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
     """
-    Fetch message body and extract Saildocs request text
+    Fetch message body and extract Saildocs request text (first line / text)
     and Garmin reply URL.
     """
     message = await mail.client.users \
@@ -105,24 +109,35 @@ async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
 
     logging.info("Message body type: %s", body_type)
 
+    # Convert HTML → text if needed
     if body_type == "html":
-        decoded = _html_to_text(body).lower()
+        decoded = _html_to_text(body)
     else:
-        decoded = body.lower()
+        decoded = body
 
+    decoded = decoded.lower()
     logging.info("Decoded message content:\n%s", decoded)
 
-    # First non-empty line
-    msg_text = next(
-        (line.strip() for line in decoded.splitlines() if line.strip()),
-        ""
-    )
+    msg_text = ""
+    garmin_reply_url = None
 
-    garmin_reply_url = next(
-        (line.strip() for line in decoded.splitlines()
-         if configs.BASE_GARMIN_REPLY_URL in line),
-        None
-    )
+    # -----------------------
+    # Extract Garmin reply URL
+    # -----------------------
+    idx = decoded.find(configs.BASE_GARMIN_REPLY_URL)
+    if idx != -1:
+        # Everything from BASE_GARMIN_REPLY_URL until whitespace/end
+        url_part = decoded[idx:]
+        garmin_reply_url = url_part.split()[0]
+
+        # Everything before reply URL is the message text
+        msg_text = decoded[:idx].strip()
+    else:
+        # No reply URL → whole content is message text
+        msg_text = decoded.strip()
+
+    # Remove trailing "reply to garmin:" if present
+    msg_text = msg_text.replace("reply to garmin:", "").strip()
 
     return msg_text, garmin_reply_url
 
@@ -145,9 +160,6 @@ def _html_to_text(html: str) -> str:
 # MESSAGE TRACKING
 # =========================
 def _load_previous_messages():
-    """
-    Load IDs of previously processed messages.
-    """
     try:
         with open(configs.PREVIOUS_MESSAGES_FILE, "r") as f:
             return set(f.read().splitlines())
@@ -155,7 +167,5 @@ def _load_previous_messages():
         return set()
 
 def _append_to_previous_messages(message_id):
-    """
-    Append a new message ID to the tracking file.
-    """
-    with open(configs.PREVIOUS_MESSAGES_
+    with open(configs.PREVIOUS_MESSAGES_FILE, "a") as f:
+        f.write(f"{message_id}\n")

@@ -2,8 +2,11 @@ import time
 import pandas as pd
 import base64
 import zlib
-import sys
-sys.path.append(".")
+import asyncio
+import logging
+from datetime import datetime, timezone
+from src import configs
+
 from src import configs
 from src import email_functions as email_func
 
@@ -31,14 +34,6 @@ def encode_saildocs_grib_file(file_path):
 
     return encoded_data
 
-
-
-import asyncio
-import logging
-from datetime import datetime, timezone
-from src import configs
-
-
 async def wait_for_saildocs_response(mail, time_sent, timeout_seconds=600, poll_interval=10):
     """
     Wait for a Saildocs response email received after time_sent.
@@ -60,16 +55,21 @@ async def wait_for_saildocs_response(mail, time_sent, timeout_seconds=600, poll_
         messages = await mail.search_messages(
             user_id=configs.MAILBOX,
             sender_email=configs.SAILDOCS_RESPONSE_EMAIL,
-            top=5
+            top=25
         )
 
         if messages and messages.value:
             logging.info("Saildocs messages receives from %s", configs.SAILDOCS_RESPONSE_EMAIL)
+            
+            time_sent_utc = time_sent.replace(tzinfo=timezone.utc)
+            logging.info("Looking for new mails received after (UTC): %s", time_sent_utc)
+
             for msg in messages.value:
                 received = msg.received_date_time
-                logging.info("Saildocs message received %s", received)
+                received_utc = received.replace(tzinfo=timezone.utc)
+                logging.info("Saildocs message receive at (UTC): %s", received_utc)
 
-                if received and received.replace(tzinfo=timezone.utc) > time_sent.replace(tzinfo=timezone.utc):
+                if received and received.replace(tzinfo=timezone.utc) > time_sent_utc:
                     logging.info("Saildocs response received: %s", msg.id)
                     return msg
 

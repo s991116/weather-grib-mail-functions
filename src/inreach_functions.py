@@ -1,81 +1,118 @@
-import requests
-import random
-import time
+import logging
+import uuid
+import asyncio
+from urllib.parse import urlparse, parse_qs
 
-import sys
-sys.path.append(".")
+import httpx
+
 from src import configs
 
 
-def send_messages_to_inreach(url, gribmessage):
+# =========================
+# PUBLIC API
+# =========================
+
+async def send_messages_to_inreach(url: str, gribmessage: str):
     """
-    Splits the gribmessage and sends each part to InReach.
+    Splits the gribmessage and sends each part to InReach asynchronously.
 
     Parameters:
     - url (str): The target URL for the InReach API.
     - gribmessage (str): The full message string to be split and sent.
 
     Returns:
-    - list: A list of response objects from the InReach API for each sent message.
+    - list[httpx.Response]: Responses from the InReach API
     """
     message_parts = _split_message(gribmessage)
-    responses = [_post_request_to_inreach(url, part) for part in message_parts]
 
-    # Introducing a delay to prevent overwhelming the API
-    time.sleep(configs.DELAY_BETWEEN_MESSAGES)
+    responses = []
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        for part in message_parts:
+            response = await _post_request_to_inreach(client, url, part)
+            responses.append(response)
+
+            # Delay between messages (non-blocking)
+            await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES)
 
     return responses
 
 
+# =========================
+# HELPERS
+# =========================
 
-######## HELPERS ########
-
-def _split_message(gribmessage):
+def _split_message(gribmessage: str):
     """
-    Splits a given grib message into chunks and encapsulates each chunk with its index.
-
-    Args:
-    gribmessage (str): The grib message that needs to be split into chunks.
+    Splits a GRIB message into chunks.
 
     Returns:
-    list: A list of formatted strings where each string has the format `msg {index}/{total_splits}:\n{chunk}\nend`.
+    list[str]: Formatted message chunks.
     """
-    total_splits = (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH - 1) // configs.MESSAGE_SPLIT_LENGTH
+    total_splits = (
+        (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH - 1)
+        // configs.MESSAGE_SPLIT_LENGTH
+    )
 
-    chunks = [gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH] for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)]
+    chunks = [
+        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
+        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
+    ]
 
-    formatted_chunks = [
+    return [
         f"msg {index + 1}/{total_splits}:\n{chunk}\nend"
         for index, chunk in enumerate(chunks)
     ]
-    return formatted_chunks
 
 
-def _post_request_to_inreach(url, message_str):
+async def _post_request_to_inreach(
+    client: httpx.AsyncClient,
+    url: str,
+    message_str: str
+):
     """
-    Sends a post request with the message to the specified InReach URL.
-
-    Args:
-    url (str): The InReach endpoint URL to send the post request.
-    message_str (str): The message string to be sent to InReach.
-
-    Returns:
-    Response: A Response object containing the server's response to the request.
+    Sends a POST request to the InReach reply URL.
     """
-    guid = url.split('extId=')[1].split('&adr')[0]
+    logging.info("Garmin InReach URL: %s", url)
+    logging.info("Garmin InReach message chunk (%d chars)", len(message_str))
+
+    guid = _extract_guid_from_url(url)
+
     data = {
-        'ReplyAddress': configs.GMAIL_ADDRESS,
-        'ReplyMessage': message_str,
-        'MessageId': str(random.randint(10000000, 99999999)),
-        'Guid': guid,
+        "ReplyAddress": configs.MAILBOX,
+        "ReplyMessage": message_str,
+        "MessageId": str(uuid.uuid4()),
+        "Guid": guid,
     }
 
-    response = requests.post(url, cookies=configs.INREACH_COOKIES, headers=configs.INREACH_HEADERS, data=data)
+    response = await client.post(
+        url,
+        cookies=configs.INREACH_COOKIES,
+        headers=configs.INREACH_HEADERS,
+        data=data,
+    )
+
     if response.status_code == 200:
-        print('Reply to InReach Sent:', message_str)
+        logging.info("InReach reply sent successfully")
     else:
-        print('Error sending part:', message_str)
-        print(f'Status Code: {response.status_code}')
-        print(f'Response Content: {response.content}')
+        logging.error(
+            "Failed to send InReach reply (%s): %s",
+            response.status_code,
+            response.text
+        )
 
     return response
+
+
+def _extract_guid_from_url(url: str) -> str:
+    """
+    Extract extId/extid GUID from Garmin reply URL.
+    """
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+
+    guid = qs.get("extId") or qs.get("extid")
+    if not guid:
+        raise ValueError(f"No extId found in InReach URL: {url}")
+
+    return guid[0]
