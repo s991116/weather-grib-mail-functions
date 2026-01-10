@@ -1,4 +1,6 @@
 import os
+import logging
+
 from azure.identity import ClientSecretCredential
 from msgraph import GraphServiceClient
 from msgraph.generated.models.message import Message
@@ -8,10 +10,11 @@ from msgraph.generated.models.recipient import Recipient
 from msgraph.generated.models.email_address import EmailAddress
 from msgraph.generated.users.item.send_mail.send_mail_post_request_body import SendMailPostRequestBody
 from msgraph.generated.users.item.messages.messages_request_builder import MessagesRequestBuilder
+
 from src import configs
 
-
 class GraphMailService:
+
     def __init__(self):
         self.credential = ClientSecretCredential(
             tenant_id=configs.TENANT_ID,
@@ -45,15 +48,21 @@ class GraphMailService:
     # -------------------------
     # SEARCH MESSAGES
     # -------------------------
-    async def search_messages(self, user_id, sender_email=None, subject_contains=None, top=50):
+    async def search_messages(self, user_id, sender_email=None, subject_contains=None, top=50, unread_only=False):
         """
         Search messages for a user with optional sender or subject filter.
+        If unread_only=True, only fetch unread messages.
         """
         query_params = MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters(
             top=top
         )
 
         filters = []
+
+        # Filter for unread mails
+        if unread_only:
+            filters.append("isRead eq false")
+
         if sender_email:
             filters.append(f"from/emailAddress/address eq '{sender_email}'")
         if subject_contains:
@@ -89,3 +98,17 @@ class GraphMailService:
 
         return None
 
+    # -------------------------
+    # MARK MAIL AS READ
+    # -------------------------
+    async def mark_as_read(self, user_id: str, message_id: str):
+        """
+        Mark a Microsoft Graph email as read.
+        """
+        try:
+            await self.client.users.by_user_id(user_id).messages.by_message_id(message_id).patch(
+                Message(is_read=True)
+            )
+        except Exception as e:
+            logging.exception("Failed to mark message %s as read: %s", message_id, e)
+            raise

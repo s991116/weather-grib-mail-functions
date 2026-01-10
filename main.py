@@ -1,7 +1,8 @@
 # main.py
 import asyncio
 import logging
-import os
+import azure.functions as func
+import argparse
 
 from src.email_functions import process_new_inreach_message
 from src import saildoc_functions as saildoc_func
@@ -13,18 +14,7 @@ logger = logging.getLogger(__name__)
 # CORE ASYNC FUNCTION
 # ========================================
 
-async def run(process_once: bool = True, verbose: bool = False):
-    """
-    Core async function to process new InReach messages via GraphMailService.
-
-    Args:
-        process_once (bool): Whether to run once (True) or in a loop (False)
-        verbose (bool): Enable verbose logging
-    """
-    logging.basicConfig(
-        level=logging.INFO if verbose else logging.WARNING,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+async def run():
 
     logger.info("Starting mail processor")
 
@@ -53,7 +43,6 @@ async def run(process_once: bool = True, verbose: bool = False):
         return False
 
 
-
 # ========================================
 # LOCAL CLI ENTRYPOINT
 # ========================================
@@ -61,21 +50,27 @@ async def run(process_once: bool = True, verbose: bool = False):
 def main_cli():
     """
     Local CLI entrypoint for testing.
-    Supports optional loop and verbose flags.
+    Supports optional loop and verbose logging.
     """
-    import argparse
+
     parser = argparse.ArgumentParser(description="InReach mail processor")
     parser.add_argument("--loop", action="store_true", help="Run continuously (poll every 5 minutes)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
+    # Sæt logniveau baseret på --verbose
+    logging.basicConfig(
+        level=logging.INFO if args.verbose else logging.WARNING,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+
     async def runner():
         if args.loop:
             while True:
-                await run(process_once=True, verbose=args.verbose)
+                await run()
                 await asyncio.sleep(300)  # 5 min polling
         else:
-            await run(process_once=True, verbose=args.verbose)
+            await run()
 
     asyncio.run(runner())
 
@@ -83,22 +78,15 @@ def main_cli():
 # AZURE FUNCTION ENTRYPOINT
 # ========================================
 
-async def main(req=None) -> dict:
+async def main(mytimer: func.TimerRequest):
     """
-    Azure Function entrypoint.
-    Can be triggered by HTTP or Timer trigger.
-
-    Args:
-        req: Optional HTTP request payload (ignored in this example)
-
-    Returns:
-        dict: JSON-like response for Azure Function
+    Azure Function Timer Trigger entrypoint.
     """
-    success = await run(process_once=True, verbose=True)
-    return {
-        "status": "success" if success else "error",
-        "message": "Processed InReach messages via GraphMailService"
-    }
+    if mytimer.past_due:
+        logger.warning("Timer trigger is running late")
+
+    await run()
+
 
 # ========================================
 # PYTHON ENTRYPOINT
