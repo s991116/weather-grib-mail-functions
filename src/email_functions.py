@@ -66,7 +66,7 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
     """
     Poll for unread Saildocs response for the given command.
     Poll every 10 sec, up to 6 times (1 min total).
-    Downloads GRIB and returns (path, garmin_reply_url)
+    Downloads GRIB in-memory and returns (BytesIO, garmin_reply_url)
     """
 
     poll_attempts = 6
@@ -92,14 +92,13 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
 
                 # Check if this Saildocs mail corresponds to our command
                 if saildocs_command.lower() in decoded:
-                    # Download GRIB attachment
-                    grib_path = await mail.download_grib_attachment(
+                    # Download GRIB attachment in-memory
+                    grib_file = await mail.download_grib_attachment(
                         user_id=configs.MAILBOX,
-                        message_id=msg.id,
-                        file_path=configs.FILE_PATH
+                        message_id=msg.id
                     )
 
-                    if not grib_path:
+                    if not grib_file:
                         logger.warning("No GRIB attachment found in %s", msg.id)
                         await mail.mark_as_read(configs.MAILBOX, msg.id)
                         return None
@@ -107,7 +106,7 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
                     await mail.mark_as_read(configs.MAILBOX, msg.id)
                     logger.info("Saildocs response %s processed and marked as read", msg.id)
 
-                    return grib_path, garmin_reply_url
+                    return grib_file, garmin_reply_url
 
         await asyncio.sleep(10)
 

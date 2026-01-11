@@ -1,5 +1,6 @@
 import os
 import logging
+from io import BytesIO
 
 from azure.identity import ClientSecretCredential
 from msgraph import GraphServiceClient
@@ -99,23 +100,28 @@ class GraphMailService:
             logger.exception("Failed to search messages: %s", e)
             raise
 
+    
+
     # -------------------------
-    # DOWNLOAD GRIB ATTACHMENT
+    # DOWNLOAD GRIB ATTACHMENT (IN-MEMORY)
     # -------------------------
-    async def download_grib_attachment(self, user_id, message_id, file_path):
+    async def download_grib_attachment(self, user_id, message_id):
         try:
             attachments = await self.client.users.by_user_id(user_id)\
                 .messages.by_message_id(message_id)\
                 .attachments.get()
 
             for att in attachments.value:
-                if att.name and att.name.endswith(".grb"):
-                    full_path = os.path.join(file_path, att.name)
-                    with open(full_path, "wb") as f:
-                        f.write(att.content_bytes)
-                    logger.info("Downloaded GRIB attachment %s", att.name)
-                    return full_path
+                if att.name and att.name.lower().endswith(".grb"):
+                    grib_file = BytesIO(att.content_bytes)
+                    grib_file.name = att.name  # Nogle biblioteker kræver filnavn
+                    grib_file.seek(0)          # Sørg for at pointer er i starten
+                    logger.info("Downloaded GRIB attachment %s into memory", att.name)
+                    return grib_file
+
+            logger.info("No GRIB attachment found in message %s", message_id)
             return None
+
         except Exception as e:
             logger.exception("Failed to download attachment from message %s: %s", message_id, e)
             raise

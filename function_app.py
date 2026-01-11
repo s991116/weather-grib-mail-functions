@@ -1,44 +1,26 @@
-import datetime
 import logging
-# import sys
+import asyncio
 import azure.functions as func
 
-# sys.path.append(".")
-
-from src import email_functions as email_func
-from src import saildoc_functions as saildoc_func
-from src import inreach_functions as inreach_func
+logging.info("Start importing run method")
+from main import run  # importér run() fra main.py
+logging.info("Imported run method")
 
 app = func.FunctionApp()
 
-_auth_service = None
-
-def get_auth_service():
-    global _auth_service
-    if _auth_service is None:
-        try:
-            logging.info("Authenticating Gmail")
-            _auth_service = email_func.gmail_authenticate()
-        except Exception:
-            logging.exception("gmail_authenticate() failed")
-            raise
-    return _auth_service
-
-@app.function_name(name="mytimer")
-@app.timer_trigger(schedule="0 */2 * * * *", arg_name="mytimer")
-def test_function(mytimer: func.TimerRequest) -> None:
-    logging.info("HELLO - Timer triggered")
+# =======================================
+# TIMER TRIGGER
+# =======================================
+@app.function_name(name="process_mails")
+@app.timer_trigger(schedule="0 */2 * * * *", arg_name="mytimer") #"schedule": "0 */2 * * * *"  // Hver 2. minut
+def process_mails(mytimer: func.TimerRequest):
+    logging.info("Timer triggered....")
 
     if mytimer.past_due:
-        logging.info("The timer is past due")
+        logging.warning("Timer trigger is past due")
 
-    # auth = get_auth_service()
-    # result = email_func.process_new_inreach_message(auth)
-
-    # if result:
-    #     grib_path, garmin_reply_url = result
-    #     encoded_grib = saildoc_func.encode_saildocs_grib_file(grib_path)
-    #     inreach_func.send_messages_to_inreach(garmin_reply_url, encoded_grib)
-    #     logging.info("GRIB sent")
-    # else:
-    #     logging.info("No messages")
+    try:
+        asyncio.run(run())
+        logging.info("Mail processing completed successfully")
+    except Exception:
+        logging.exception("Error running mail processor")

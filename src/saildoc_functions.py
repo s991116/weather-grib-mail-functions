@@ -1,12 +1,6 @@
-import time
-import pandas as pd
-import base64
-import zlib
 import asyncio
 import logging
-from datetime import datetime, timezone
-from src import configs
-
+import base64
 from src import configs
 from src import email_functions as email_func
 
@@ -14,6 +8,7 @@ async def process_new_saildocs_response(mail):
     """
     Fetch exactly one unread Saildocs response email.
     Marks it as read immediately for idempotency.
+    Returns the message object or None if no unread messages exist.
     """
 
     messages = await mail.search_messages(
@@ -39,26 +34,15 @@ async def process_new_saildocs_response(mail):
 
     return msg
 
-def encode_saildocs_grib_file(file_path):
+def encode_saildocs_grib_file(file):
     """
-    Reads the content of a GRIB file, compresses it using zlib, then encodes the compressed data into a base64 string.
-
-    Args:
-    file_path (str): Path to the GRIB file that needs to be encoded.
-
-    Returns:
-    str: Base64 encoded string representation of the zlib compressed GRIB file content.
+    Accepts either a file path (str) or a BytesIO object.
+    Returns base64-encoded content as a string.
     """
-
-    # Open the file in binary read mode and read its content
-    with open(file_path, 'rb') as file:
-        grib_binary = file.read()
-
-    # Compress the binary content using zlib
-    compressed_grib = zlib.compress(grib_binary)
-
-    # Convert the compressed content to a base64 encoded string
-    encoded_data = base64.b64encode(compressed_grib).decode('utf-8')
-
-    return encoded_data
-
+    if isinstance(file, str):
+        with open(file, "rb") as f:
+            data = f.read()
+    else:
+        file.seek(0)
+        data = file.read()
+    return base64.b64encode(data).decode("ascii")
