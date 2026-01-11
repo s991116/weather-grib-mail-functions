@@ -139,3 +139,4 @@ __azurite_db*__.json
 src/configs.py
 data/previous_messages.txt
 AzuriteConfig
+.DS_Store
