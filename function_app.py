@@ -2,25 +2,24 @@ import logging
 import asyncio
 import azure.functions as func
 
-logging.info("Start importing run method")
-from main import run  # importér run() fra main.py
-logging.info("Imported run method")
-
 app = func.FunctionApp()
 
-# =======================================
-# TIMER TRIGGER
-# =======================================
 @app.function_name(name="process_mails")
-@app.timer_trigger(schedule="0 */2 * * * *", arg_name="mytimer") #"schedule": "0 */2 * * * *"  // Hver 2. minut
+@app.timer_trigger(schedule="0 */2 * * * *", arg_name="mytimer")
 def process_mails(mytimer: func.TimerRequest):
-    logging.info("Timer triggered....")
+    logging.info("Timer triggered")
 
     if mytimer.past_due:
         logging.warning("Timer trigger is past due")
 
     try:
+        logging.info("Importing run() from main")
+        from main import run
+        logging.info("Successfully imported run()")
+
         asyncio.run(run())
         logging.info("Mail processing completed successfully")
+
     except Exception:
-        logging.exception("Error running mail processor")
+        logging.exception("❌ Error during import or execution of mail processor")
+        raise

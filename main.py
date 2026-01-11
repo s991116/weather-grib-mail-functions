@@ -1,4 +1,3 @@
-# main.py
 import asyncio
 import logging
 import argparse
@@ -16,7 +15,6 @@ args, unknown = parser.parse_known_args()
 # ========================================
 # CONFIGURE LOGGING
 # ========================================
-# Hvis vi kører som Azure Function, må vi ikke ændre root handler
 if "FUNCTIONS_WORKER_RUNTIME" in os.environ:
     logger = logging.getLogger(__name__)  # Azure Functions logger
 else:
@@ -50,14 +48,12 @@ async def run():
     mail = GraphMailService()
 
     try:
-        # 1️⃣ Behandl evt. ny Garmin inReach request
         saildocs_request_result = await process_new_inreach_message(mail)
 
         if saildocs_request_result:
             saildocs_command, garmin_reply_url = saildocs_request_result
             logger.info("Processed new InReach request")
 
-            # 2️⃣ Poll efter Saildocs svar i op til 1 min
             saildocs_response = await process_new_saildocs_response(
                 mail,
                 saildocs_command,
@@ -65,10 +61,9 @@ async def run():
             )
 
             if saildocs_response:
-                grib_file, reply_url = saildocs_response  # GRIB er nu BytesIO
+                grib_file, reply_url = saildocs_response
                 logger.info("Saildocs GRIB received in-memory")
 
-                # Encode GRIB fra BytesIO
                 encoded_grib = saildoc_func.encode_saildocs_grib_file(grib_file)
                 await inreach_func.send_messages_to_inreach(reply_url, encoded_grib)
 
@@ -92,7 +87,7 @@ def main_cli():
         if args.loop:
             while True:
                 await run()
-                await asyncio.sleep(300)  # 5 min polling loop
+                await asyncio.sleep(300)
         else:
             await run()
 
@@ -103,10 +98,6 @@ def main_cli():
 # AZURE FUNCTION ENTRYPOINT
 # ========================================
 async def main(req=None):
-    """
-    Kaldt af Azure Functions. req er eventuelt HttpRequest.
-    Vi kan ignorere req her, fordi vi blot kører mail-processen.
-    """
     success = await run()
     return success
 

@@ -2,7 +2,8 @@
 # Ref: aka.ms/functions-azure-monitor-python
 # azure-monitor-opentelemetry
 azure-functions
-google-api-python-client
-google-auth-oauthlib
+azure-identity
+azure-core
+msgraph-sdk
 requests
 pandas
