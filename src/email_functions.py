@@ -3,7 +3,8 @@ import re
 import logging
 from html import unescape
 
-from src import configs
+import src.configs as configs
+
 from src.mail.graph_mail import GraphMailService
 
 logger = logging.getLogger(__name__)

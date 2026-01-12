@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import base64
-from src import configs
+import src.configs as configs
 from src import email_functions as email_func
 
 async def process_new_saildocs_response(mail):

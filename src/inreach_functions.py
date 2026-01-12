@@ -5,7 +5,7 @@ from urllib.parse import urlparse, parse_qs
 
 import httpx
 
-from src import configs
+import src.configs as configs
 
 
 # =========================
@@ -74,7 +74,8 @@ async def _post_request_to_inreach(
     Sends a POST request to the InReach reply URL.
     """
     logging.info("Garmin InReach URL: %s", url)
-    logging.info("Garmin InReach message chunk (%d chars)", len(message_str))
+    logging.info("Garmin InReach message chunk len %s", len(message_str))
+    logging.info("Garmin InReach message: %s", message_str)
 
     guid = _extract_guid_from_url(url)
 
