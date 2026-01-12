@@ -21,8 +21,8 @@ async def process_new_inreach_message(mail: GraphMailService):
     """
 
     messages = await mail.search_messages(
-        user_id=configs.MAILBOX,
-        sender_email=configs.SERVICE_EMAIL,
+        user_id = configs.MAILBOX(),
+        sender_email = configs.SERVICE_EMAIL(),
         unread_only=True,
         top=1
     )
@@ -39,18 +39,18 @@ async def process_new_inreach_message(mail: GraphMailService):
 
         if not garmin_reply_url:
             logger.warning("No Garmin reply URL found in InReach request %s", msg.id)
-            await mail.mark_as_read(configs.MAILBOX, msg.id)
+            await mail.mark_as_read(configs.MAILBOX(), msg.id)
             return None
 
         # Send only the Saildocs command text, NOT the reply URL
         await mail.send_mail(
-            sender=configs.MAILBOX,
-            to=configs.SAILDOCS_EMAIL_QUERY,
+            sender=configs.MAILBOX(),
+            to=configs.SAILDOCS_EMAIL_QUERY(),
             subject="",
             body="send " + msg_text.strip()
         )
 
-        await mail.mark_as_read(configs.MAILBOX, msg.id)
+        await mail.mark_as_read(configs.MAILBOX(), msg.id)
         logger.info("InReach request %s processed and marked as read", msg.id)
 
         return msg_text.strip(), garmin_reply_url
@@ -75,8 +75,8 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
         logger.info("Polling for Saildocs response (%d/%d)...", attempt + 1, poll_attempts)
 
         messages = await mail.search_messages(
-            user_id=configs.MAILBOX,
-            sender_email=configs.SAILDOCS_RESPONSE_EMAIL,
+            user_id=configs.MAILBOX(),
+            sender_email=configs.SAILDOCS_RESPONSE_EMAIL(),
             unread_only=True,
             top=5
         )
@@ -95,16 +95,16 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
                 if saildocs_command.lower() in decoded:
                     # Download GRIB attachment in-memory
                     grib_file = await mail.download_grib_attachment(
-                        user_id=configs.MAILBOX,
+                        user_id=configs.MAILBOX(),
                         message_id=msg.id
                     )
 
                     if not grib_file:
                         logger.warning("No GRIB attachment found in %s", msg.id)
-                        await mail.mark_as_read(configs.MAILBOX, msg.id)
+                        await mail.mark_as_read(configs.MAILBOX(), msg.id)
                         return None
 
-                    await mail.mark_as_read(configs.MAILBOX, msg.id)
+                    await mail.mark_as_read(configs.MAILBOX(), msg.id)
                     logger.info("Saildocs response %s processed and marked as read", msg.id)
 
                     return grib_file, garmin_reply_url
@@ -123,7 +123,7 @@ async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
     Extract Saildocs command text and Garmin reply URL from an InReach request mail.
     """
     message = await mail.client.users \
-        .by_user_id(configs.MAILBOX) \
+        .by_user_id(configs.MAILBOX()) \
         .messages \
         .by_message_id(message_id) \
         .get()
@@ -141,7 +141,7 @@ async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
     msg_text = ""
     garmin_reply_url = None
 
-    idx = decoded.find(configs.BASE_GARMIN_REPLY_URL)
+    idx = decoded.find(configs.BASE_GARMIN_REPLY_URL())
     if idx != -1:
         garmin_reply_url = decoded[idx:].split()[0]
         msg_text = decoded[:idx].strip()

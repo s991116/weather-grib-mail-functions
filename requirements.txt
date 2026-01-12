@@ -7,3 +7,6 @@ azure-core
 msgraph-sdk
 requests
 pandas
+pytest 
+pytest-asyncio
+pytest-dotenv

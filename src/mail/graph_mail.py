@@ -20,9 +20,9 @@ class GraphMailService:
 
     def __init__(self):
         self.credential = ClientSecretCredential(
-            tenant_id=configs.TENANT_ID,
-            client_id=configs.CLIENT_ID,
-            client_secret=configs.CLIENT_SECRET
+            tenant_id = configs.TENANT_ID(), 
+            client_id = configs.CLIENT_ID(),
+            client_secret = configs.CLIENT_SECRET()
         )
         self.client = GraphServiceClient(self.credential)
 

@@ -1,32 +1,47 @@
 import os
-import json
+
+# -------------------------
+# HELPER FUNCTION
+# -------------------------
+def _get_env(name, default=None, required=True, cast=str):
+    """
+    Lazy load an environment variable.
+    """
+    value = os.getenv(name, default)
+    if required and value is None:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    if value is not None and cast is not None:
+        try:
+            value = cast(value)
+        except Exception as e:
+            raise RuntimeError(f"Environment variable {name} cannot be cast: {e}")
+    return value
+
 
 # -------------------------
 # Azure / Microsoft Graph
 # -------------------------
-TENANT_ID = os.getenv("TENANT_ID")
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+TENANT_ID = lambda: _get_env("TENANT_ID")
+CLIENT_ID = lambda: _get_env("CLIENT_ID")
+CLIENT_SECRET = lambda: _get_env("CLIENT_SECRET")
 
 # -------------------------
 # Mail / InReach / Saildocs
 # -------------------------
-MAILBOX = os.getenv("MAILBOX")
-SERVICE_EMAIL = os.getenv("SERVICE_EMAIL")
-SAILDOCS_EMAIL_QUERY = os.getenv("SAILDOCS_EMAIL_QUERY")
-SAILDOCS_RESPONSE_EMAIL = os.getenv("SAILDOCS_RESPONSE_EMAIL")
+MAILBOX = lambda: _get_env("MAILBOX")
+SERVICE_EMAIL = lambda: _get_env("SERVICE_EMAIL")
+SAILDOCS_EMAIL_QUERY = lambda: _get_env("SAILDOCS_EMAIL_QUERY")
+SAILDOCS_RESPONSE_EMAIL = lambda: _get_env("SAILDOCS_RESPONSE_EMAIL")
 
 # -------------------------
 # Garmin / InReach
 # -------------------------
-BASE_GARMIN_REPLY_URL = os.getenv("BASE_GARMIN_REPLY_URL")
-
-MESSAGE_SPLIT_LENGTH = int(os.getenv("MESSAGE_SPLIT_LENGTH", "120"))
-DELAY_BETWEEN_MESSAGES = int(os.getenv("DELAY_BETWEEN_MESSAGES", "5"))
+BASE_GARMIN_REPLY_URL = lambda: _get_env("BASE_GARMIN_REPLY_URL")
+MESSAGE_SPLIT_LENGTH = lambda: _get_env("MESSAGE_SPLIT_LENGTH", 120, cast=int, required=False)
+DELAY_BETWEEN_MESSAGES = lambda: _get_env("DELAY_BETWEEN_MESSAGES", 5, cast=int, required=False)
 
 # -------------------------
-# InReach HTTP headers & cookies
-# These are static and therefore kept in code
+# InReach HTTP headers & cookies (static)
 # -------------------------
 INREACH_HEADERS = {
     "authority": "explore.garmin.com",
@@ -49,23 +64,3 @@ INREACH_HEADERS = {
 INREACH_COOKIES = {
     "BrowsingMode": "Desktop",
 }
-
-# -------------------------
-# Optional startup validation (recommended)
-# -------------------------
-REQUIRED_VARS = [
-    "TENANT_ID",
-    "CLIENT_ID",
-    "CLIENT_SECRET",
-    "MAILBOX",
-    "SERVICE_EMAIL",
-    "SAILDOCS_EMAIL_QUERY",
-    "SAILDOCS_RESPONSE_EMAIL",
-    "BASE_GARMIN_REPLY_URL",
-]
-
-missing = [var for var in REQUIRED_VARS if not os.getenv(var)]
-if missing:
-    raise RuntimeError(
-        f"Missing required environment variables: {', '.join(missing)}"
-    )

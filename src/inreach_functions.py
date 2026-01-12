@@ -33,7 +33,7 @@ async def send_messages_to_inreach(url: str, gribmessage: str):
             responses.append(response)
 
             # Delay between messages (non-blocking)
-            await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES)
+            await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES())
 
     return responses
 
@@ -50,13 +50,13 @@ def _split_message(gribmessage: str):
     list[str]: Formatted message chunks.
     """
     total_splits = (
-        (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH - 1)
-        // configs.MESSAGE_SPLIT_LENGTH
+        (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH() - 1)
+        // configs.MESSAGE_SPLIT_LENGTH()
     )
 
     chunks = [
-        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
-        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
+        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH()]
+        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH())
     ]
 
     return [
@@ -80,7 +80,7 @@ async def _post_request_to_inreach(
     guid = _extract_guid_from_url(url)
 
     data = {
-        "ReplyAddress": configs.MAILBOX,
+        "ReplyAddress": configs.MAILBOX(),
         "ReplyMessage": message_str,
         "MessageId": str(uuid.uuid4()),
         "Guid": guid,

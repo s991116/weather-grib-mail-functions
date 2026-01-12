@@ -136,7 +136,6 @@ __blobstorage__
 __queuestorage__
 __azurite_db*__.json
 .python_packages
-src/configs.py
 data/previous_messages.txt
 AzuriteConfig
 .DS_Store

@@ -12,8 +12,8 @@ async def process_new_saildocs_response(mail):
     """
 
     messages = await mail.search_messages(
-        user_id=configs.MAILBOX,
-        sender_email=configs.SAILDOCS_RESPONSE_EMAIL,
+        user_id=configs.MAILBOX(),
+        sender_email=configs.SAILDOCS_RESPONSE_EMAIL(),
         unread_only=True,
         top=1
     )
@@ -26,7 +26,7 @@ async def process_new_saildocs_response(mail):
     logging.info("Processing unread Saildocs response: %s", msg.id)
 
     try:
-        await mail.mark_as_read(configs.MAILBOX, msg.id)
+        await mail.mark_as_read(configs.MAILBOX(), msg.id)
         logging.info("Marked Saildocs response as read: %s", msg.id)
     except Exception:
         logging.exception("Failed to mark Saildocs response as read")
