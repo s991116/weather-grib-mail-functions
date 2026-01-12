@@ -16,15 +16,18 @@ Feel free to use and modify the code to your needs. However, keep in mind that i
 ## PREREQUISITES
 
 - GARMIN INREACH: Make sure you have a Garmin inReach device with an active subscription. The Premium Plan with unlimited message plan is recommended: https://www.garmin.com/en-US/p/837461/pn/010-04017-SU/
-- Azure Subscription that you have admin access to. You need to get the TENANT_ID and CLIENT_ID
-CLIENT_SECRET = _required_env("CLIENT_SECRET")
+- Azure Subscription that you have admin access to. You need to get the 
+    - TENANT_ID
+    - CLIENT_ID
+    - CLIENT_SECRET
 - Create an Azure Function. Ensure the function are registered to have the following API Permisions:
     - Mail.AdvancedReadWrite.All
     - MailboxFolder.ReadWrite.All
 
-- HOSTING: Use Azure Function to host the service.
+- Hosting: Use Azure to host the code as an Azure Function.
     - Using Visual Studio Code, you can use the Azure Package package to handle the Account and deploy Azure Functions.
-    - To test the Azure Function local, you can use func start --verbose
+    - To test the Azure Function local, you can use the command "func start --verbose"
+
 - DEVICE SETUP: Ensure you have a device like a tablet or computer with Jupyter Notebook to run the decoder and a GRIB file viewer app.
 
 
