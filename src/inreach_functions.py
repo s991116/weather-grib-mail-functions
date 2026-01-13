@@ -49,10 +49,14 @@ def _split_message(gribmessage: str):
     Returns:
     list[str]: Formatted message chunks.
     """
-    total_splits = (
-        (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH() - 1)
-        // configs.MESSAGE_SPLIT_LENGTH()
+
+    logging.info(
+        "Split message: encoded_len=%s split_len=%s",
+        len(gribmessage),
+        configs.MESSAGE_SPLIT_LENGTH()
     )
+
+    total_splits = (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH() - 1)
 
     chunks = [
         gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH()]

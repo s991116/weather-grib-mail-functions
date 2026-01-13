@@ -17,7 +17,6 @@ def _get_env(name, default=None, required=True, cast=str):
             raise RuntimeError(f"Environment variable {name} cannot be cast: {e}")
     return value
 
-
 # -------------------------
 # Azure / Microsoft Graph
 # -------------------------

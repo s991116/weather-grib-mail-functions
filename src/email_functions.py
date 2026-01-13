@@ -19,7 +19,8 @@ async def process_new_inreach_message(mail: GraphMailService):
     Marks InReach mail as read.
     Returns: (saildocs_command_text, garmin_reply_url) or None
     """
-
+    logger.info("Search for mail in mail account: %s", configs.MAILBOX())
+    logger.info("Search for mail from Service Mail: %s", configs.SERVICE_EMAIL())
     messages = await mail.search_messages(
         user_id = configs.MAILBOX(),
         sender_email = configs.SERVICE_EMAIL(),

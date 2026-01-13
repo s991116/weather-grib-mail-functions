@@ -45,4 +45,11 @@ def encode_saildocs_grib_file(file):
     else:
         file.seek(0)
         data = file.read()
-    return base64.b64encode(data).decode("ascii")
+
+    logging.warning("Raw Grib data size: %s", len(data))
+    
+    encoded = base64.b64encode(data).decode("ascii")
+
+    logging.warning("Encoded Grib data size: %s", len(encoded))
+
+    return encoded
