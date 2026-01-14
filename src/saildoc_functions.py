@@ -52,10 +52,13 @@ def encode_saildocs_grib_file(file):
         data = file.read()
 
     logging.info("Raw Grib data size: %s", len(data))
+
+    logging.info("Non encoded data: %s", data)
     
     encoded = base64.b64encode(data).decode("ascii")
 
     logging.info("Encoded Grib data size: %s", len(encoded))
+    logging.info("Encode data raw: %s", encoded)
 
     logging.info("Raw bytes hash: %s", hashlib.sha256(data).hexdigest())
     logging.info("Raw bytes len: %s", len(data))
