@@ -83,58 +83,8 @@ else:
 # =================================================
 # APPLICATION IMPORTS (after logging setup)
 # =================================================
-from src.email_functions import (
-    process_new_inreach_message,
-    process_new_saildocs_response,
-)
-from src import saildoc_functions as saildoc_func
-from src import inreach_functions as inreach_func
-from src.graph_mail import GraphMailService
-
+from src import process
 logger.info("Imports completed")
-
-
-# =================================================
-# CORE ASYNC PROCESSOR
-# =================================================
-async def run():
-    logger.info("Starting mail processor run()")
-
-    mail = GraphMailService()
-
-    try:
-        saildocs_request = await process_new_inreach_message(mail)
-
-        if not saildocs_request:
-            logger.info("No new InReach requests")
-            return True
-
-        saildocs_command, garmin_reply_url = saildocs_request
-        logger.info("Processed new InReach request")
-
-        saildocs_response = await process_new_saildocs_response(
-            mail,
-            saildocs_command,
-            garmin_reply_url,
-        )
-
-        if not saildocs_response:
-            logger.info("No Saildocs response received within timeout")
-            return True
-
-        grib_file, reply_url = saildocs_response
-        logger.info("Saildocs GRIB received in-memory")
-
-        encoded_grib = saildoc_func.encode_saildocs_grib_file(grib_file)
-        await inreach_func.send_messages_to_inreach(reply_url, encoded_grib)
-
-        logger.info("GRIB sent back to InReach")
-        return True
-
-    except Exception:
-        logger.exception("Fatal error during mail processing")
-        return False
-
 
 # =================================================
 # CLI ENTRYPOINT
@@ -144,13 +94,12 @@ def main_cli():
         if args.loop:
             logger.info("Running in loop mode")
             while True:
-                await run()
+                await process.run()
                 await asyncio.sleep(300)
         else:
-            await run()
+            await process.run()
 
     asyncio.run(runner())
-
 
 # =================================================
 # CLI EXECUTION

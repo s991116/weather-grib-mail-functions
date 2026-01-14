@@ -14,10 +14,10 @@ def process_mails(mytimer: func.TimerRequest):
 
     try:
         logging.info("Importing run() from main")
-        from main import run
+        from src import process
         logging.info("Successfully imported run()")
 
-        asyncio.run(run())
+        asyncio.run(process.run())
         logging.info("Mail processing completed successfully")
 
     except Exception:
