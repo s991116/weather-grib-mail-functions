@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import base64
+import hashlib
 import src.configs as configs
 from src import email_functions as email_func
 
@@ -39,6 +40,10 @@ def encode_saildocs_grib_file(file):
     Accepts either a file path (str) or a BytesIO object.
     Returns base64-encoded content as a string.
     """
+
+    logging.info("Type: %s", type(file))
+    logging.info("Tell before read: %s", file.tell() if hasattr(file, "tell") else "N/A")
+
     if isinstance(file, str):
         with open(file, "rb") as f:
             data = f.read()
@@ -46,10 +51,13 @@ def encode_saildocs_grib_file(file):
         file.seek(0)
         data = file.read()
 
-    logging.warning("Raw Grib data size: %s", len(data))
+    logging.info("Raw Grib data size: %s", len(data))
     
     encoded = base64.b64encode(data).decode("ascii")
 
-    logging.warning("Encoded Grib data size: %s", len(encoded))
+    logging.info("Encoded Grib data size: %s", len(encoded))
+
+    logging.info("Raw bytes hash: %s", hashlib.sha256(data).hexdigest())
+    logging.info("Raw bytes len: %s", len(data))
 
     return encoded

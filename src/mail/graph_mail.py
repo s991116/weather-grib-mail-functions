@@ -1,6 +1,7 @@
 import os
 import logging
 from io import BytesIO
+import base64
 
 from azure.identity import ClientSecretCredential
 from msgraph import GraphServiceClient
@@ -113,17 +114,26 @@ class GraphMailService:
 
             for att in attachments.value:
                 if att.name and att.name.lower().endswith(".grb"):
-                    grib_file = BytesIO(att.content_bytes)
-                    grib_file.name = att.name  # Nogle biblioteker kræver filnavn
-                    grib_file.seek(0)          # Sørg for at pointer er i starten
-                    logger.info("Downloaded GRIB attachment %s into memory", att.name)
+
+                    # contentBytes fra Graph er ALTID Base64
+                    raw_bytes = base64.b64decode(att.content_bytes)
+
+                    grib_file = BytesIO(raw_bytes)
+                    grib_file.name = att.name
+                    grib_file.seek(0)
+
+                    logger.info(
+                        "Downloaded GRIB %s (decoded size=%d)",
+                        att.name,
+                        len(raw_bytes),
+                    )
                     return grib_file
 
             logger.info("No GRIB attachment found in message %s", message_id)
             return None
 
-        except Exception as e:
-            logger.exception("Failed to download attachment from message %s: %s", message_id, e)
+        except Exception:
+            logger.exception("Failed to download attachment from message %s", message_id)
             raise
 
     # -------------------------

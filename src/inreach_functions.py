@@ -56,13 +56,13 @@ def _split_message(gribmessage: str):
         configs.MESSAGE_SPLIT_LENGTH
     )
 
-    total_splits = (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH - 1)
-
     chunks = [
         gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
         for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
     ]
 
+    total_splits = len(chunks)
+    
     return [
         f"msg {index + 1}/{total_splits}:\n{chunk}\nend"
         for index, chunk in enumerate(chunks)
