@@ -5,7 +5,7 @@ from html import unescape
 
 import src.configs as configs
 
-from src.mail.graph_mail import GraphMailService
+from src.graph_mail import GraphMailService
 
 logger = logging.getLogger(__name__)
 

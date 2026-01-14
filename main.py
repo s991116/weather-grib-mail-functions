@@ -89,7 +89,7 @@ from src.email_functions import (
 )
 from src import saildoc_functions as saildoc_func
 from src import inreach_functions as inreach_func
-from src.mail.graph_mail import GraphMailService
+from src.graph_mail import GraphMailService
 
 logger.info("Imports completed")
 
