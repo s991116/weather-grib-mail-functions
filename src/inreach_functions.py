@@ -33,7 +33,7 @@ async def send_messages_to_inreach(url: str, gribmessage: str):
             responses.append(response)
 
             # Delay between messages (non-blocking)
-            await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES())
+            await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES)
 
     return responses
 
@@ -53,14 +53,14 @@ def _split_message(gribmessage: str):
     logging.info(
         "Split message: encoded_len=%s split_len=%s",
         len(gribmessage),
-        configs.MESSAGE_SPLIT_LENGTH()
+        configs.MESSAGE_SPLIT_LENGTH
     )
 
-    total_splits = (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH() - 1)
+    total_splits = (len(gribmessage) + configs.MESSAGE_SPLIT_LENGTH - 1)
 
     chunks = [
-        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH()]
-        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH())
+        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
+        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
     ]
 
     return [

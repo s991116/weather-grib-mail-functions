@@ -25,7 +25,7 @@ async def process_new_inreach_message(mail: GraphMailService):
         user_id = configs.MAILBOX(),
         sender_email = configs.SERVICE_EMAIL(),
         unread_only=True,
-        top=1
+        top=configs.TOP_SEARCH_COUNT_MAILBOX
     )
 
     if not messages or not messages.value:
@@ -142,7 +142,7 @@ async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
     msg_text = ""
     garmin_reply_url = None
 
-    idx = decoded.find(configs.BASE_GARMIN_REPLY_URL())
+    idx = decoded.find(configs.BASE_GARMIN_REPLY_URL)
     if idx != -1:
         garmin_reply_url = decoded[idx:].split()[0]
         msg_text = decoded[:idx].strip()

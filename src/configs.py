@@ -31,13 +31,14 @@ MAILBOX = lambda: _get_env("MAILBOX")
 SERVICE_EMAIL = lambda: _get_env("SERVICE_EMAIL")
 SAILDOCS_EMAIL_QUERY = lambda: _get_env("SAILDOCS_EMAIL_QUERY")
 SAILDOCS_RESPONSE_EMAIL = lambda: _get_env("SAILDOCS_RESPONSE_EMAIL")
+TOP_SEARCH_COUNT_MAILBOX = 25
 
 # -------------------------
 # Garmin / InReach
 # -------------------------
-BASE_GARMIN_REPLY_URL = lambda: _get_env("BASE_GARMIN_REPLY_URL")
-MESSAGE_SPLIT_LENGTH = lambda: _get_env("MESSAGE_SPLIT_LENGTH", 120, cast=int, required=False)
-DELAY_BETWEEN_MESSAGES = lambda: _get_env("DELAY_BETWEEN_MESSAGES", 5, cast=int, required=False)
+BASE_GARMIN_REPLY_URL = "https://garmin.com/sendmessage"
+MESSAGE_SPLIT_LENGTH = 120
+DELAY_BETWEEN_MESSAGES = 5
 
 # -------------------------
 # InReach HTTP headers & cookies (static)

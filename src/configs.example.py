@@ -22,16 +22,14 @@ MAILBOX = "user@domain.com"  # The mailbox used in GraphMailService
 SERVICE_EMAIL = "sender@domain.com"  # Sender of InReach emails
 SAILDOCS_EMAIL_QUERY = "query@saildocs.com"  # Saildocs query address
 SAILDOCS_RESPONSE_EMAIL = "query-reply@saildocs.com"  # Saildocs response address
-
+TOP_SEARCH_COUNT_MAILBOX = 25
 
 # -------------------------
 # Garmin / InReach
 # -------------------------
 BASE_GARMIN_REPLY_URL = "https://garmin.com/sendmessage"
-
 # Split length for outgoing InReach messages
 MESSAGE_SPLIT_LENGTH = 120
-
 # Delay between outgoing messages (seconds)
 DELAY_BETWEEN_MESSAGES = 5
 
