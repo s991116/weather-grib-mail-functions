@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import logging
 import pytest
 
 from io import BytesIO
@@ -8,6 +7,23 @@ from pathlib import Path
 
 from src.saildoc_functions import encode_saildocs_grib_file
 from src.inreach_functions import send_messages_to_inreach
+
+
+# --------------------------------------------------
+# Shared fake sender (Dependency Injection)
+# --------------------------------------------------
+class FakeResponse:
+    status_code = 200
+    text = "OK"
+
+
+class FakeInReachSender:
+    def __init__(self):
+        self.sent_messages: list[str] = []
+
+    async def send(self, client, url: str, message: str):
+        self.sent_messages.append(message)
+        return FakeResponse()
 
 
 @pytest.mark.asyncio
@@ -20,37 +36,21 @@ async def test_saildocs_to_inreach_roundtrip(monkeypatch):
     # =====================================================
     # Arrange
     # =====================================================
-
     fixture_path = Path(__file__).parent / "fixtures" / "ecmwf20260113071001417.grb"
     original_bytes = fixture_path.read_bytes()
 
     fake_grib = BytesIO(original_bytes)
 
-    # encode + split (NEW responsibility)
+    # encode + split
     message_parts = encode_saildocs_grib_file(fake_grib)
 
-    sent_messages = []
+    fake_sender = FakeInReachSender()
 
-    # -----------------------------------------
-    # Mock asyncio.sleep
-    # -----------------------------------------
+    # speed up test
     async def fake_sleep(_):
         return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-
-    # -----------------------------------------
-    # Mock Garmin InReach HTTP POST
-    # -----------------------------------------
-    class FakeResponse:
-        status_code = 200
-        text = "OK"
-
-    async def fake_post(self, url, cookies=None, headers=None, data=None):
-        sent_messages.append(data["ReplyMessage"])
-        return FakeResponse()
-
-    monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
 
     # =====================================================
     # Act
@@ -58,15 +58,15 @@ async def test_saildocs_to_inreach_roundtrip(monkeypatch):
     await send_messages_to_inreach(
         url="https://garmin.com/sendmessage?extId=TEST-GUID",
         message_parts=message_parts,
+        sender=fake_sender.send,
     )
+
+    sent_messages = fake_sender.sent_messages
+    assert sent_messages, "No InReach messages were sent"
 
     # =====================================================
     # Assert – merge & decode
     # =====================================================
-
-    assert sent_messages, "No InReach messages were sent"
-
-    # Sort by msg X/Y index
     sent_messages.sort(
         key=lambda m: int(m.split()[1].split("/")[0])
     )
@@ -87,50 +87,36 @@ async def test_grib_encode_split_send_merge_decode(monkeypatch):
     Deterministic payload test without filesystem dependency
     """
 
-    # ======================
+    # =====================================================
     # Arrange
-    # ======================
-
+    # =====================================================
     original_bytes = b"GRIB-DATA-" * 500
     fake_grib = BytesIO(original_bytes)
 
     message_parts = encode_saildocs_grib_file(fake_grib)
-    sent_messages = []
 
-    # ----------------------
-    # Mock asyncio.sleep
-    # ----------------------
+    fake_sender = FakeInReachSender()
+
     async def fake_sleep(_):
         return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
-    # ----------------------
-    # Mock HTTP POST
-    # ----------------------
-    class FakeResponse:
-        status_code = 200
-        text = "OK"
-
-    async def fake_post(self, url, cookies=None, headers=None, data=None):
-        sent_messages.append(data["ReplyMessage"])
-        return FakeResponse()
-
-    monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
-
-    # ======================
+    # =====================================================
     # Act
-    # ======================
+    # =====================================================
     await send_messages_to_inreach(
         url="https://garmin.com/sendmessage?extId=TEST-GUID",
         message_parts=message_parts,
+        sender=fake_sender.send,
     )
 
-    # ======================
-    # Assert
-    # ======================
+    sent_messages = fake_sender.sent_messages
     assert len(sent_messages) > 1
 
+    # =====================================================
+    # Assert – merge & decode
+    # =====================================================
     merged_encoded = "".join(
         msg.split(":\n", 1)[1].rsplit("\nend", 1)[0]
         for msg in sent_messages

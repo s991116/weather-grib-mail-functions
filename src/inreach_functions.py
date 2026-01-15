@@ -6,51 +6,58 @@ from urllib.parse import urlparse, parse_qs
 import httpx
 
 import src.configs as configs
+from src.inreach_sender import InReachSender
 
 
 # =========================
 # PUBLIC API
 # =========================
 
-async def send_messages_to_inreach(url: str, message_parts: list[str]):
+async def send_messages_to_inreach(
+    url: str,
+    message_parts: list[str],
+    sender: InReachSender | None = None,
+):
     """
-    Splits the gribmessage and sends each part to InReach asynchronously.
+    Sends already-split message parts to InReach asynchronously.
 
     Parameters:
-    - url (str): The target URL for the InReach API.
-    - gribmessage (str): The full message string to be split and sent.
+    - url (str): Garmin InReach reply URL
+    - message_parts (list[str]): Pre-split messages
+    - sender (InReachSender, optional): injectable sender (for tests)
 
     Returns:
-    - list[httpx.Response]: Responses from the InReach API
+    - list[httpx.Response]
     """
 
+    sender = sender or _post_request_to_inreach
     responses = []
 
     async with httpx.AsyncClient(timeout=10) as client:
         for part in message_parts:
-            response = await _post_request_to_inreach(client, url, part)
+            response = await sender(client, url, part)
             responses.append(response)
 
-            # Delay between messages (non-blocking)
+            # Non-blocking delay
             await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES)
 
     return responses
 
 
 # =========================
-# HELPERS
+# DEFAULT HTTP IMPLEMENTATION
 # =========================
+
 async def _post_request_to_inreach(
     client: httpx.AsyncClient,
     url: str,
-    message_str: str
-):
+    message_str: str,
+) -> httpx.Response:
     """
-    Sends a POST request to the InReach reply URL.
+    Default HTTP implementation of InReachSender.
     """
     logging.info("Garmin InReach URL: %s", url)
     logging.info("Garmin InReach message chunk len %s", len(message_str))
-    logging.info("Garmin InReach message: %s", message_str)
 
     guid = _extract_guid_from_url(url)
 
@@ -74,11 +81,15 @@ async def _post_request_to_inreach(
         logging.error(
             "Failed to send InReach reply (%s): %s",
             response.status_code,
-            response.text
+            response.text,
         )
 
     return response
 
+
+# =========================
+# HELPERS
+# =========================
 
 def _extract_guid_from_url(url: str) -> str:
     """
