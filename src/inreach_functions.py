@@ -12,7 +12,7 @@ import src.configs as configs
 # PUBLIC API
 # =========================
 
-async def send_messages_to_inreach(url: str, gribmessage: str):
+async def send_messages_to_inreach(url: str, message_parts: list[str]):
     """
     Splits the gribmessage and sends each part to InReach asynchronously.
 
@@ -23,7 +23,6 @@ async def send_messages_to_inreach(url: str, gribmessage: str):
     Returns:
     - list[httpx.Response]: Responses from the InReach API
     """
-    message_parts = _split_message(gribmessage)
 
     responses = []
 
@@ -41,34 +40,6 @@ async def send_messages_to_inreach(url: str, gribmessage: str):
 # =========================
 # HELPERS
 # =========================
-
-def _split_message(gribmessage: str):
-    """
-    Splits a GRIB message into chunks.
-
-    Returns:
-    list[str]: Formatted message chunks.
-    """
-
-    logging.info(
-        "Split message: encoded_len=%s split_len=%s",
-        len(gribmessage),
-        configs.MESSAGE_SPLIT_LENGTH
-    )
-
-    chunks = [
-        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
-        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
-    ]
-
-    total_splits = len(chunks)
-    
-    return [
-        f"msg {index + 1}/{total_splits}:\n{chunk}\nend"
-        for index, chunk in enumerate(chunks)
-    ]
-
-
 async def _post_request_to_inreach(
     client: httpx.AsyncClient,
     url: str,

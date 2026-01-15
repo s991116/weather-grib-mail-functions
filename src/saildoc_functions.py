@@ -63,4 +63,35 @@ def encode_saildocs_grib_file(file):
     logging.info("Raw bytes hash: %s", hashlib.sha256(data).hexdigest())
     logging.info("Raw bytes len: %s", len(data))
 
-    return encoded
+    encoded_split = _split_message(encoded)
+
+    return encoded_split
+
+# =========================
+# HELPERS
+# =========================
+def _split_message(gribmessage: str):
+    """
+    Splits a GRIB message into chunks.
+
+    Returns:
+    list[str]: Formatted message chunks.
+    """
+
+    logging.info(
+        "Split message: encoded_len=%s split_len=%s",
+        len(gribmessage),
+        configs.MESSAGE_SPLIT_LENGTH
+    )
+
+    chunks = [
+        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
+        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
+    ]
+
+    total_splits = len(chunks)
+    
+    return [
+        f"msg {index + 1}/{total_splits}:\n{chunk}\nend"
+        for index, chunk in enumerate(chunks)
+    ]
