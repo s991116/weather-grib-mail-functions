@@ -70,10 +70,11 @@ async def run(
         # Step 4: Send to InReach
         # -------------------------------------------------
         await inreach_func.send_messages_to_inreach(
-            url=reply_url,
-            message_parts=message_parts,
+            reply_url,
+            message_parts,
             sender=inreach_sender,
         )
+
 
         logging.info("GRIB sent back to InReach")
         return True

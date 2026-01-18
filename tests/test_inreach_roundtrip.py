@@ -21,7 +21,7 @@ class FakeInReachSender:
     def __init__(self):
         self.sent_messages: list[str] = []
 
-    async def send(self, client, url: str, message: str):
+    async def send(self, url: str, message: str):
         self.sent_messages.append(message)
         return FakeResponse()
 
@@ -52,13 +52,15 @@ async def test_saildocs_to_inreach_roundtrip(monkeypatch):
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
+    url = "https://garmin.com/sendmessage?extId=TEST-GUID"
+
     # =====================================================
     # Act
     # =====================================================
     await send_messages_to_inreach(
-        url="https://garmin.com/sendmessage?extId=TEST-GUID",
-        message_parts=message_parts,
-        sender=fake_sender.send,
+        url,
+        message_parts,
+        fake_sender,
     )
 
     sent_messages = fake_sender.sent_messages
@@ -101,14 +103,14 @@ async def test_grib_encode_split_send_merge_decode(monkeypatch):
         return None
 
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-
+    url="https://garmin.com/sendmessage?extId=TEST-GUID"
     # =====================================================
     # Act
     # =====================================================
     await send_messages_to_inreach(
-        url="https://garmin.com/sendmessage?extId=TEST-GUID",
-        message_parts=message_parts,
-        sender=fake_sender.send,
+        url,
+        message_parts,
+        fake_sender,
     )
 
     sent_messages = fake_sender.sent_messages

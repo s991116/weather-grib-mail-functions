@@ -13,35 +13,34 @@ from src.inreach_sender import InReachSender
 # PUBLIC API
 # =========================
 
+# src/inreach_functions.py
+
+import asyncio
+import logging
+
+
 async def send_messages_to_inreach(
-    url: str,
-    message_parts: list[str],
-    sender: InReachSender | None = None,
+    reply_url: str,
+    messages: list[str],
+    sender,
+    delay_seconds: float = 1.0,
 ):
     """
-    Sends already-split message parts to InReach asynchronously.
-
-    Parameters:
-    - url (str): Garmin InReach reply URL
-    - message_parts (list[str]): Pre-split messages
-    - sender (InReachSender, optional): injectable sender (for tests)
-
-    Returns:
-    - list[httpx.Response]
+    Sends split messages to InReach using the provided sender.
     """
 
-    sender = sender or _post_request_to_inreach
-    responses = []
+    for idx, part in enumerate(messages, start=1):
+        logging.info("Sending InReach message %s/%s", idx, len(messages))
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        for part in message_parts:
-            response = await sender(client, url, part)
-            responses.append(response)
+        response = await sender.send(reply_url, part)
 
-            # Non-blocking delay
-            await asyncio.sleep(configs.DELAY_BETWEEN_MESSAGES)
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"InReach send failed: {response.status_code} {response.text}"
+            )
 
-    return responses
+        if idx < len(messages):
+            await asyncio.sleep(delay_seconds)
 
 
 # =========================
