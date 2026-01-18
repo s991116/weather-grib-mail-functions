@@ -7,7 +7,6 @@ import src.configs as configs
 from src import email_functions as email_func
 from io import BytesIO
 
-
 # =========================
 # SAILDOCS EMAIL PROCESSING
 # =========================
@@ -61,51 +60,94 @@ def encode_saildocs_grib_file(file):
 
     logging.info("Raw Grib data size: %s", len(data))
     logging.info("Raw bytes hash: %s", hashlib.sha256(data).hexdigest())
+    logging.info("Raw Grib data: %s", data)
 
     encoded = base64.b64encode(data).decode("ascii")
+    logging.info("Base64 encode data: %s", encoded)
     encoded_split = _split_message(encoded)
+    wrapped_messages = _wrap_encoded_messages(encoded_split)
 
-    return encoded_split
+    return wrapped_messages
 
 
 # =========================
 # DECODE GRIB
 # =========================
-def decode_saildocs_grib_file(message_chunks: list[str], output=None):
+def decode_saildocs_grib_file(message_chunks: list[str]):
     """
-    Accepts a list of message parts (from InReach) and reconstructs the original GRIB file.
-    Decodes base64 content and writes binary GRIB file to either:
-        - output (str): path to save file
-        - output (BytesIO): in-memory buffer
+    Accepts a list of base64-encoded message chunks and reconstructs
+    the original GRIB file.
+
+    Each element in message_chunks MUST be a plain base64 string
+    with no headers, footers, or newlines.
+
+    Args:
+        message_chunks (list[str]): Base64 chunks in correct order
+        output (str | BytesIO | None):
+            - str: file path to write GRIB
+            - BytesIO: in-memory buffer
+            - None: defaults to 'decoded.grb'
 
     Returns:
-    - str | BytesIO: path or buffer containing decoded GRIB
+        str | BytesIO
     """
-    logging.info("Decoding %d message chunks", len(message_chunks))
+    logging.info("Decoding %d base64 chunks", len(message_chunks))
 
-    # Saml alle chunks til én base64 string
-    encoded_data = ''
-    for chunk in message_chunks:
-        lines = chunk.strip().split("\n")
-        if len(lines) >= 2:
-            encoded_data += lines[1]
+    if not message_chunks:
+        raise ValueError("message_chunks is empty")
 
-    # Decode base64
+    # 1. Concatenate base64 chunks directly
+    encoded_data = "".join(message_chunks)
+
+    logging.info("Total encoded length: %d", len(encoded_data))
+
+    # 2. Decode base64 → raw GRIB bytes
     grib_bytes = base64.b64decode(encoded_data)
 
-    if isinstance(output, BytesIO):
-        output.write(grib_bytes)
-        output.seek(0)
-        logging.info("Decoded GRIB written to BytesIO (%d bytes)", len(grib_bytes))
-        return output
-    elif isinstance(output, str) or output is None:
-        out_path = output or "decoded.grb"
-        with open(out_path, 'wb') as f:
-            f.write(grib_bytes)
-        logging.info("Decoded GRIB file written to %s (%d bytes)", out_path, len(grib_bytes))
-        return out_path
-    else:
-        raise TypeError("output must be either None, str (file path), or BytesIO")
+    logging.info("Decoded GRIB size: %d bytes", len(grib_bytes))
+
+    return grib_bytes
+
+
+# ===================================================
+# PARSE TEXT_RECEIVED → list[str]
+# ===================================================
+import logging
+
+def unwrap_messages_to_payload_chunks(text: str) -> list[str]:
+    """
+    Parse InReach messages of the form:
+
+        msg 1/31
+        <base64>
+        end
+
+    Returns:
+        list[str]: base64 payloads in correct order
+    """
+    lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+
+    payloads: list[str] = []
+    i = 0
+
+    while i < len(lines):
+        header = lines[i]
+        payload = lines[i + 1]
+        footer = lines[i + 2]
+
+        if not header.startswith("msg "):
+            raise ValueError(f"Expected 'msg x/y' at line {i}, got: {header}")
+
+        if footer != "end":
+            raise ValueError(f"Expected 'end' at line {i+2}, got: {footer}")
+
+        payloads.append(payload)
+        i += 3
+
+    logging.info("Parsed %d payload chunks", len(payloads))
+    logging.info("Total base64 length: %d", sum(len(p) for p in payloads))
+
+    return payloads
 
 
 # =========================
@@ -129,8 +171,16 @@ def _split_message(gribmessage: str):
         for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
     ]
 
-    total_splits = len(chunks)
+    return chunks
+
+def _wrap_encoded_messages(encodedmessages: list[str]):
+    """
+    Wrap each message with into the format "msg x/y:\n<data>\nend")
+    Where x is message nr from 1 to y, and y is the total number of messages
+    """
+
+    total_splits = len(encodedmessages)
     return [
-        f"msg {index + 1}/{total_splits}:\n{chunk}\nend"
-        for index, chunk in enumerate(chunks)
+        f"msg {index + 1}/{total_splits}:\n{encodedMessage}\nend"
+        for index, encodedMessage in enumerate(encodedmessages)
     ]

@@ -8,6 +8,8 @@ from pathlib import Path
 from src.saildoc_functions import encode_saildocs_grib_file
 from src.inreach_functions import send_messages_to_inreach
 from src.saildoc_functions import encode_saildocs_grib_file, decode_saildocs_grib_file
+from src.saildoc_functions import unwrap_messages_to_payload_chunks
+
 
 # --------------------------------------------------
 # Shared fake sender (Dependency Injection)
@@ -42,10 +44,12 @@ async def test_encode_decode_roundtrip_with_function():
 
     # decode into BytesIO using the real function
     decoded_buffer = BytesIO()
-    result_buffer = decode_saildocs_grib_file(message_parts, output=decoded_buffer)
+
+    combined_message_parts = "\n".join(message_parts)
+    payload_parts = unwrap_messages_to_payload_chunks(combined_message_parts)
+    decoded_bytes = decode_saildocs_grib_file(payload_parts)
 
     # read decoded bytes
-    decoded_bytes = result_buffer.read()
     assert decoded_bytes == original_bytes, "Decoded bytes do not match original"
 
 
