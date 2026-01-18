@@ -1,3 +1,4 @@
+#FILE src/process.py
 import logging
 
 from src.email_functions import (
@@ -72,9 +73,8 @@ async def run(
         await inreach_func.send_messages_to_inreach(
             reply_url,
             message_parts,
-            sender=inreach_sender,
+            inreach_sender,
         )
-
 
         logging.info("GRIB sent back to InReach")
         return True
