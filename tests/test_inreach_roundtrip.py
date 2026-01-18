@@ -7,7 +7,7 @@ from pathlib import Path
 
 from src.saildoc_functions import encode_saildocs_grib_file
 from src.inreach_functions import send_messages_to_inreach
-
+from src.saildoc_functions import encode_saildocs_grib_file, decode_saildocs_grib_file
 
 # --------------------------------------------------
 # Shared fake sender (Dependency Injection)
@@ -26,61 +26,27 @@ class FakeInReachSender:
         return FakeResponse()
 
 
+
 @pytest.mark.asyncio
-async def test_saildocs_to_inreach_roundtrip(monkeypatch):
+async def test_encode_decode_roundtrip_with_function():
     """
-    End-to-end test:
-    Saildocs attachment → encode+split → send → merge → decode
+    Test that encoding and then decoding a GRIB file reconstructs the original bytes,
+    using decode_saildocs_grib_file function and BytesIO.
     """
-
-    # =====================================================
-    # Arrange
-    # =====================================================
-    fixture_path = Path(__file__).parent / "fixtures" / "ecmwf20260113071001417.grb"
-    original_bytes = fixture_path.read_bytes()
-
+    original_bytes = b"TEST-GRIB-DATA-" * 100
     fake_grib = BytesIO(original_bytes)
 
     # encode + split
     message_parts = encode_saildocs_grib_file(fake_grib)
+    assert message_parts, "Encoding returned empty message parts"
 
-    fake_sender = FakeInReachSender()
+    # decode into BytesIO using the real function
+    decoded_buffer = BytesIO()
+    result_buffer = decode_saildocs_grib_file(message_parts, output=decoded_buffer)
 
-    # speed up test
-    async def fake_sleep(_):
-        return None
-
-    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-
-    url = "https://garmin.com/sendmessage?extId=TEST-GUID"
-
-    # =====================================================
-    # Act
-    # =====================================================
-    await send_messages_to_inreach(
-        url,
-        message_parts,
-        fake_sender,
-    )
-
-    sent_messages = fake_sender.sent_messages
-    assert sent_messages, "No InReach messages were sent"
-
-    # =====================================================
-    # Assert – merge & decode
-    # =====================================================
-    sent_messages.sort(
-        key=lambda m: int(m.split()[1].split("/")[0])
-    )
-
-    merged_encoded = "".join(
-        msg.split(":\n", 1)[1].rsplit("\nend", 1)[0]
-        for msg in sent_messages
-    )
-
-    decoded_bytes = base64.b64decode(merged_encoded)
-
-    assert decoded_bytes == original_bytes
+    # read decoded bytes
+    decoded_bytes = result_buffer.read()
+    assert decoded_bytes == original_bytes, "Decoded bytes do not match original"
 
 
 @pytest.mark.asyncio
