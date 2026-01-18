@@ -32,6 +32,7 @@ async def run(
     logging.info("Starting mail processor run()")
 
     mail = mail or GraphMailService()
+    inreach_sender = inreach_sender or InReachSender()
 
     try:
         # -------------------------------------------------
