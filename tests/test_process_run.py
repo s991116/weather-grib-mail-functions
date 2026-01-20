@@ -1,78 +1,71 @@
 import pytest
 from io import BytesIO
-
+from src.InReachRequest import InReachRequest
 from src.process import run
 
 
+import pytest
+from src.process import run
+from src.inreach_sender import InReachSender
+
+
 @pytest.mark.asyncio
-async def test_run_with_inreach_and_saildocs(monkeypatch):
+async def test_run_triggers_weather_request_for_weather_inreach_message(monkeypatch):
     """
-    End-to-end test of run() with:
-    - a fake InReach request
-    - a fake Saildocs response
+    run() should trigger request_weather_report when receiving
+    a weather InReach request (SEND format).
     """
 
-    sent_messages = []
+    weather_called = False
 
-    # --- Fake process_new_inreach_message ---
-    async def fake_inreach_request(mail):
-        return "TEST-COMMAND", "https://garmin.com/sendmessage?extId=TEST-GUID"
+    # -------------------------------------------------
+    # Fake InReach request (weather)
+    # -------------------------------------------------
+    async def fake_retrieve_new_inreach_request(mail):
+        return InReachRequest(
+            "weather",
+            "TEST-COMMAND",
+            "https://garmin.com/sendmessage?extId=TEST-GUID"
+        )
 
     monkeypatch.setattr(
-        "src.process.process_new_inreach_message",
-        fake_inreach_request
+        "src.process.retrive_new_inreach_request",
+        fake_retrieve_new_inreach_request,
     )
 
-    # --- Fake Saildocs response ---
-    async def fake_process_new_saildocs_response(mail, command, url):
-        fake_grib = BytesIO(b"TEST-GRIB-DATA")
-        return fake_grib, url
+    # -------------------------------------------------
+    # Spy: request_weather_report
+    # -------------------------------------------------
+    async def fake_request_weather_report(mail, payload_text):
+        nonlocal weather_called
+        weather_called = True
+
+        # Assert only what matters
+        assert payload_text == "TEST-COMMAND"
+
+    monkeypatch.setattr(
+        "src.process.request_weather_report",
+        fake_request_weather_report,
+    )
+
+    # -------------------------------------------------
+    # Short-circuit downstream processing
+    # -------------------------------------------------
+    async def fake_process_new_saildocs_response(mail, payload_text):
+        return None  # stop pipeline early
 
     monkeypatch.setattr(
         "src.process.process_new_saildocs_response",
-        fake_process_new_saildocs_response
+        fake_process_new_saildocs_response,
     )
 
-    # --- Fake encoding + split ---
-    from src import saildoc_functions as saildoc_func
+    # -------------------------------------------------
+    # Run
+    # -------------------------------------------------
+    result = await run(mail=None, inreach_sender=None)
 
-    def fake_encode_split(file):
-        return [
-            f"msg {i}/3:\nTEST-GRIB-DATA\nend"
-            for i in range(1, 4)
-        ]
-
-    monkeypatch.setattr(
-        saildoc_func,
-        "encode_saildocs_grib_file",
-        fake_encode_split
-    )
-
-    # --- Fake InReachSender ---
-    class FakeSender:
-        async def send(self, url, message_str):
-            sent_messages.append(message_str)
-
-            class Response:
-                status_code = 200
-                text = "OK"
-
-            return Response()
-
-    # --- Mock asyncio.sleep ---
-    async def fake_sleep(_):
-        return None
-
-    monkeypatch.setattr("asyncio.sleep", fake_sleep)
-
-    # --- Run processor ---
-    result = await run(
-        mail=None,
-        inreach_sender=FakeSender()
-    )
-
-    # --- Assertions ---
+    # -------------------------------------------------
+    # Assertions
+    # -------------------------------------------------
     assert result is True
-    assert len(sent_messages) == 3
-    for chunk in sent_messages:
-        assert "TEST-GRIB-DATA" in chunk
+    assert weather_called is True

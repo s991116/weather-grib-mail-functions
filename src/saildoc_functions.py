@@ -4,13 +4,13 @@ import logging
 import base64
 import hashlib
 import src.configs as configs
-from src import email_functions as email_func
 from io import BytesIO
+from src.graph_mail import GraphMailService
 
 # =========================
 # SAILDOCS EMAIL PROCESSING
 # =========================
-async def process_new_saildocs_response(mail):
+async def process_new_saildocs_response(mail : GraphMailService):
     """
     Fetch exactly one unread Saildocs response email.
     Marks it as read immediately for idempotency.
@@ -43,7 +43,7 @@ async def process_new_saildocs_response(mail):
 # =========================
 # ENCODE GRIB
 # =========================
-def encode_saildocs_grib_file(file):
+def encode_saildocs_grib_file(file: str | BytesIO):
     """
     Accepts either a file path (str) or a BytesIO object.
     Returns a list of base64-encoded message chunks.
@@ -65,9 +65,8 @@ def encode_saildocs_grib_file(file):
     encoded = base64.b64encode(data).decode("ascii")
     logging.info("Base64 encode data: %s", encoded)
     encoded_split = _split_message(encoded)
-    wrapped_messages = _wrap_encoded_messages(encoded_split)
 
-    return wrapped_messages
+    return encoded_split
 
 
 # =========================
@@ -172,15 +171,3 @@ def _split_message(gribmessage: str):
     ]
 
     return chunks
-
-def _wrap_encoded_messages(encodedmessages: list[str]):
-    """
-    Wrap each message with into the format "msg x/y:\n<data>\nend")
-    Where x is message nr from 1 to y, and y is the total number of messages
-    """
-
-    total_splits = len(encodedmessages)
-    return [
-        f"msg {index + 1}/{total_splits}:\n{encodedMessage}\nend"
-        for index, encodedMessage in enumerate(encodedmessages)
-    ]

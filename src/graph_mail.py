@@ -54,7 +54,7 @@ class GraphMailService:
     # -------------------------
     # SEARCH MESSAGES
     # -------------------------
-    async def search_messages(self, user_id, sender_email=None, subject_contains=None, top=50, unread_only=False):
+    async def search_messages(self, user_id: str, sender_email: str | None = None, subject_contains: str | None =None, top: int = 50, unread_only: bool=False):
         query_params = MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters(
             top=top
         )

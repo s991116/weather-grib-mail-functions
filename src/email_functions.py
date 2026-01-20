@@ -7,18 +7,19 @@ from html import unescape
 import src.configs as configs
 
 from src.graph_mail import GraphMailService
+from src.InReachRequest import InReachRequest
 
 logger = logging.getLogger(__name__)
 
 # ======================================================
-# 1️⃣ GARMIN INREACH → SAILDOCS (REQUEST)
+# 1️⃣ GARMIN INREACH MAIL → INREACH REQUEST
 # ======================================================
-async def process_new_inreach_message(mail: GraphMailService):
+async def retrieve_new_inreach_request(mail: GraphMailService):
     """
     Process exactly one unread InReach request mail.
     Extracts Saildocs command and Garmin reply URL.
     Marks InReach mail as read.
-    Returns: (saildocs_command_text, garmin_reply_url) or None
+    Returns: InReachRequest (type, payload_text, garmin_reply_url) or None
     """
     logger.info("Search for mail in mail account: %s", configs.MAILBOX())
     logger.info("Search for mail from Service Mail: %s", configs.SERVICE_EMAIL())
@@ -37,35 +38,47 @@ async def process_new_inreach_message(mail: GraphMailService):
     logger.info("Processing InReach request %s", msg.id)
 
     try:
-        msg_text, garmin_reply_url = await _fetch_message_text_and_url(msg.id, mail)
+        body_message = await _fetch_message_body_from_mail(msg.id, mail)
 
-        if not garmin_reply_url:
-            logger.warning("No Garmin reply URL found in InReach request %s", msg.id)
-            await mail.mark_as_read(configs.MAILBOX(), msg.id)
-            return None
+        inreach_request = _decode_inreach_request(body_message)
+        if inreach_request:
+            logger.info("InReach request from mail %s", inreach_request)
+        else:
+            logger.info("InReach request could not be created from mail %s", inreach_request)
+    except Exception:
+        logger.exception("Failed processing InReach request %s", msg.id)
+        return None
+    
+    await mail.mark_as_read(configs.MAILBOX(), msg.id)
+    logger.info("InReach mail marked as read.")
+    return inreach_request
 
-        # Send only the Saildocs command text, NOT the reply URL
+
+# ======================================================
+# 1️⃣ GARMIN INREACH → SAILDOCS (REQUEST)
+# ======================================================
+async def request_weather_report(mail: GraphMailService, message_request: str):
+    """
+    Request weather report from Saildoc
+    Returns: None
+    """
+
+    try:
+        # Send only the Saildocs command text
         await mail.send_mail(
             sender=configs.MAILBOX(),
             to=configs.SAILDOCS_EMAIL_QUERY(),
             subject="",
-            body="send " + msg_text.strip()
+            body="send " + message_request.strip()
         )
-
-        await mail.mark_as_read(configs.MAILBOX(), msg.id)
-        logger.info("InReach request %s processed and marked as read", msg.id)
-
-        return msg_text.strip(), garmin_reply_url
-
     except Exception:
         logger.exception("Failed processing InReach request %s", msg.id)
-        return None
 
 
 # ======================================================
 # 2️⃣ SAILDOCS → GARMIN INREACH (RESPONSE)
 # ======================================================
-async def process_new_saildocs_response(mail: GraphMailService, saildocs_command, garmin_reply_url):
+async def process_new_saildocs_response(mail: GraphMailService, saildocs_command: str):
     """
     Poll for unread Saildocs response for the given command.
     Poll every 10 sec, up to 6 times (1 min total).
@@ -109,7 +122,7 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
                     await mail.mark_as_read(configs.MAILBOX(), msg.id)
                     logger.info("Saildocs response %s processed and marked as read", msg.id)
 
-                    return grib_file, garmin_reply_url
+                    return grib_file
 
         await asyncio.sleep(10)
 
@@ -120,7 +133,7 @@ async def process_new_saildocs_response(mail: GraphMailService, saildocs_command
 # ======================================================
 # HELPERS
 # ======================================================
-async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
+async def _fetch_message_body_from_mail(message_id, mail: GraphMailService):
     """
     Extract Saildocs command text and Garmin reply URL from an InReach request mail.
     """
@@ -140,19 +153,72 @@ async def _fetch_message_text_and_url(message_id, mail: GraphMailService):
 
     decoded = decoded.lower()
 
-    msg_text = ""
-    garmin_reply_url = None
+    return decoded
 
-    idx = decoded.find(configs.BASE_GARMIN_REPLY_URL)
-    if idx != -1:
-        garmin_reply_url = decoded[idx:].split()[0]
-        msg_text = decoded[:idx].strip()
+
+def _decode_inreach_request(raw_text: str) -> InReachRequest:
+    """
+    Decode an InReach email body into an InReachRequest.
+
+    Supported formats (case-insensitive):
+
+    Multi-line:
+        GRIB <saildocs-command>
+
+        Reply to Garmin: <url>
+
+    Single-line:
+        grib <saildocs-command> reply to garmin: <url>
+    """
+
+    GRIB_PREFIX = "GRIB"
+    REPLY_PREFIX = "Reply to Garmin:"
+
+    logging.info("Decode InReach request: %s", raw_text)
+
+    if not raw_text or not raw_text.strip():
+        raise ValueError("Empty InReach message")
+
+    # -------------------------------------------------
+    # Normalize whitespace
+    # -------------------------------------------------
+    text = " ".join(raw_text.strip().split())
+    lower_text = text.lower()
+
+    # -------------------------------------------------
+    # Extract reply URL
+    # -------------------------------------------------
+    reply_idx = lower_text.find(REPLY_PREFIX.lower())
+    if reply_idx == -1:
+        raise ValueError("Reply to Garmin URL not found")
+
+    reply_url = text[reply_idx + len(REPLY_PREFIX):].strip()
+
+    if not reply_url:
+        raise ValueError("Reply to Garmin URL not found")
+
+    # -------------------------------------------------
+    # Extract request part (everything before Reply)
+    # -------------------------------------------------
+    request_part = text[:reply_idx].strip()
+
+    # -------------------------------------------------
+    # Detect request type + payload
+    # -------------------------------------------------
+    if request_part.upper().startswith(GRIB_PREFIX):
+        request_type = "weather"
+        payload_text = request_part[len(GRIB_PREFIX):].lstrip()
     else:
-        msg_text = decoded.strip()
+        raise ValueError(f"Unknown request type: {request_part}")
 
-    msg_text = msg_text.replace("reply to garmin:", "").strip()
+    if not payload_text:
+        raise ValueError("Missing GRIB payload")
 
-    return msg_text, garmin_reply_url
+    return InReachRequest(
+        request_type,
+        payload_text,
+        reply_url,
+    )
 
 
 def _html_to_text(html: str) -> str:

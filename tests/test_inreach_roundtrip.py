@@ -6,7 +6,7 @@ from io import BytesIO
 from pathlib import Path
 
 from src.saildoc_functions import encode_saildocs_grib_file
-from src.inreach_functions import send_messages_to_inreach
+from src import inreach_functions as inreach_func
 from src.saildoc_functions import encode_saildocs_grib_file, decode_saildocs_grib_file
 from src.saildoc_functions import unwrap_messages_to_payload_chunks
 
@@ -45,7 +45,8 @@ async def test_encode_decode_roundtrip_with_function():
     # decode into BytesIO using the real function
     decoded_buffer = BytesIO()
 
-    combined_message_parts = "\n".join(message_parts)
+    wrapped_messages = inreach_func.wrap_messages(message_parts)
+    combined_message_parts = "\n".join(wrapped_messages)    
     payload_parts = unwrap_messages_to_payload_chunks(combined_message_parts)
     decoded_bytes = decode_saildocs_grib_file(payload_parts)
 
@@ -77,9 +78,10 @@ async def test_grib_encode_split_send_merge_decode(monkeypatch):
     # =====================================================
     # Act
     # =====================================================
-    await send_messages_to_inreach(
+    wrapped_message_parts = inreach_func.wrap_messages(message_parts)
+    await inreach_func.send_messages_to_inreach(
         url,
-        message_parts,
+        wrapped_message_parts,
         fake_sender,
     )
 
