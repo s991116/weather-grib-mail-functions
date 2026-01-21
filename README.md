@@ -1,4 +1,4 @@
-# MarineGRIB-InReach-Service
+# Weather-GRIB-InReach-Service
 
 This is a fork of the project https://github.com/tabeaeggler/MarineGRIB-InReach-Transmitter
 Changes from that project is
@@ -28,14 +28,16 @@ Feel free to use and modify the code to your needs. However, keep in mind that i
     - Using Visual Studio Code, you can use the Azure Package package to handle the Account and deploy Azure Functions.
     - To test the Azure Function local, you can use the command "func start --verbose"
 
+- For ChatGPT support, an API key and available tokens needs to be added
+
 - DEVICE SETUP: Ensure you have a device like a tablet or computer with Jupyter Notebook to run the decoder and a GRIB file viewer app.
 
 
 ## REQUESTING GRIB
 
-To request a GRIB-file, send a message to the dedicated Outlook adress via the Garmin inReach with specified weather model, location range, grid size, times and weather paramters. Here's an example of such a request:
+To request a GRIB-file, send a message to the dedicated Outlook adress via the Garmin inReach with specified weather model, location range, grid size, times and weather paramters. Here's an example of such a request. The message must start with GRIB:
 
-```ecmwf:24n,34n,72w,60w|8,8|12,48|wind,press```
+```GRIB ecmwf:24n,34n,72w,60w|8,8|12,48|wind,press```
 
 This translates to a request for data based on the ECMWF model, covering latitudes from 24N to 34N and longitudes from 72W to 60W, sampled at 8-degree intervals. The forecast times are 12 and 48 hours, and the requested weather parameters are wind and pressure.
 
@@ -77,8 +79,18 @@ Utilising this method, you can acquire wind and pressure data for the Atlantic c
 
 **Request:**
 
-```ecmwf:44n,10n,75w,10w|8,8|12,48|wind,press```
-
+```GRIP ecmwf:44n,10n,75w,10w|8,8|12,48|wind,press```
 
 **Result (in GRIB viewer app):**
 ![Screenshot GRIB viewer](images/screenshot_grib_viewer.jpg)
+
+# Chat GPT
+The service can handle prompts to Chat-GPT (requires subscription to there API) and sent the reply back to the Garmin Inreach.
+
+## REQUESTING A CHAT GPT REPLY
+You can trigger a CHAT-GPT reply, by sending the following message from the Garmin inreach
+
+```CHAT <Nr of words>:<Prompt>```
+
+The Prompt is sent to Chat-GPT including an instruction the the reply should be within the Nr of words.
+The reply is then split and sent ack to the Garmin inreach.
