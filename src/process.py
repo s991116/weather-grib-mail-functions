@@ -6,6 +6,7 @@ from src.email_functions import (
     process_new_saildocs_response,
     retrieve_new_inreach_request,
 )
+from src import openai_functions as openai_func
 from src import saildoc_functions as saildoc_func
 from src import inreach_functions as inreach_func
 from src.graph_mail import GraphMailService
@@ -45,7 +46,7 @@ async def run(
             return True
 
         # -------------------------------------------------
-        # Step 2: Handle weather request
+        # Step 2A: Handle weather request
         # -------------------------------------------------
         if(inreach_request.type == "weather"):
             await request_weather_report(mail, inreach_request.payload_text)
@@ -59,11 +60,16 @@ async def run(
                 logging.info("No Saildocs response received within timeout")
                 return True
             
-            message_parts = saildoc_func.encode_saildocs_grib_file(grib_file)
+            message = saildoc_func.encode_saildocs_grib_file(grib_file)
 
+        # -------------------------------------------------
+        # Step 2B: Handle weather request
+        # -------------------------------------------------
         elif(inreach_request.type == "chat"):
-            logging.warning("Chat request not implemented yet.")
-            return True
+            message = await openai_func.request_openai_response(inreach_request.payload_text)
+            if not message:
+                logging.info("No OpenAI response received")
+                return True
         else:
             logging.warning("Chat request type is not handled: %s", inreach_request.type)
             return True
@@ -71,6 +77,7 @@ async def run(
         # -------------------------------------------------
         # Step 4: Send to InReach
         # -------------------------------------------------
+        message_parts = inreach_func.split_message(message)
         wrapped_message_parts = inreach_func.wrap_messages(message_parts)
         await inreach_func.send_messages_to_inreach(
             inreach_request.reply_url,
@@ -78,7 +85,7 @@ async def run(
             inreach_sender,
         )
 
-        logging.info("GRIB sent back to InReach")
+        logging.info("Message sent back to InReach")
         return True
 
     except Exception:

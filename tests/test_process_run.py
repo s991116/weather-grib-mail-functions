@@ -29,7 +29,7 @@ async def test_run_triggers_weather_request_for_weather_inreach_message(monkeypa
         )
 
     monkeypatch.setattr(
-        "src.process.retrive_new_inreach_request",
+        "src.process.retrieve_new_inreach_request",
         fake_retrieve_new_inreach_request,
     )
 

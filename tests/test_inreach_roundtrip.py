@@ -3,7 +3,6 @@ import base64
 import pytest
 
 from io import BytesIO
-from pathlib import Path
 
 from src.saildoc_functions import encode_saildocs_grib_file
 from src import inreach_functions as inreach_func

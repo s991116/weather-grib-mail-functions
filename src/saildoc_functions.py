@@ -64,10 +64,7 @@ def encode_saildocs_grib_file(file: str | BytesIO):
 
     encoded = base64.b64encode(data).decode("ascii")
     logging.info("Base64 encode data: %s", encoded)
-    encoded_split = _split_message(encoded)
-
-    return encoded_split
-
+    return encoded
 
 # =========================
 # DECODE GRIB
@@ -111,8 +108,6 @@ def decode_saildocs_grib_file(message_chunks: list[str]):
 # ===================================================
 # PARSE TEXT_RECEIVED → list[str]
 # ===================================================
-import logging
-
 def unwrap_messages_to_payload_chunks(text: str) -> list[str]:
     """
     Parse InReach messages of the form:
@@ -147,27 +142,3 @@ def unwrap_messages_to_payload_chunks(text: str) -> list[str]:
     logging.info("Total base64 length: %d", sum(len(p) for p in payloads))
 
     return payloads
-
-
-# =========================
-# HELPERS
-# =========================
-def _split_message(gribmessage: str):
-    """
-    Splits a GRIB message into chunks for InReach messages.
-
-    Returns:
-    list[str]: formatted message chunks ("msg x/y:\n<data>\nend")
-    """
-    logging.info(
-        "Split message: encoded_len=%s split_len=%s",
-        len(gribmessage),
-        configs.MESSAGE_SPLIT_LENGTH
-    )
-
-    chunks = [
-        gribmessage[i:i + configs.MESSAGE_SPLIT_LENGTH]
-        for i in range(0, len(gribmessage), configs.MESSAGE_SPLIT_LENGTH)
-    ]
-
-    return chunks

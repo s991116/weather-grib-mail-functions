@@ -14,6 +14,10 @@ TENANT_ID = "your-tenant-id"
 CLIENT_ID = "your-client-id"
 CLIENT_SECRET = "your-client-secret"
 
+#--------------------------
+# OpenAI
+#--------------------------
+OPEN_AI_KEY = "Your-openai-key"
 
 # -------------------------
 # Mail / InReach / Saildocs

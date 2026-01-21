@@ -5,6 +5,7 @@ azure-functions
 azure-identity
 azure-core
 msgraph-sdk
+openai
 requests
 pandas
 pytest 

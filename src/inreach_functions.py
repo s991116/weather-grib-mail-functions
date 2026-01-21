@@ -1,6 +1,7 @@
 #FILE src/inreach_functions.py
 import logging
 import asyncio
+import src.configs as configs
 from src.inreach_sender import InReachSender
 
 async def send_messages_to_inreach(
@@ -36,6 +37,26 @@ async def send_messages_to_inreach(
 
         if idx < len(wrapped_messages):
             await asyncio.sleep(delay_seconds)
+
+def split_message(message: str):
+    """
+    Splits a message into chunks for InReach messages.
+
+    Returns:
+    list[str]: where input message is split to configured MESSAGE_SPLIT_LENGTH
+    """
+    logging.info(
+        "Split message: encoded_len=%s split_len=%s",
+        len(message),
+        configs.MESSAGE_SPLIT_LENGTH
+    )
+
+    chunks = [
+        message[i:i + configs.MESSAGE_SPLIT_LENGTH]
+        for i in range(0, len(message), configs.MESSAGE_SPLIT_LENGTH)
+    ]
+
+    return chunks
 
 def wrap_messages(encodedmessages: list[str]):
     """

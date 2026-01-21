@@ -25,6 +25,11 @@ TENANT_ID = lambda: _get_env("TENANT_ID")
 CLIENT_ID = lambda: _get_env("CLIENT_ID")
 CLIENT_SECRET = lambda: _get_env("CLIENT_SECRET")
 
+#--------------------------
+# OpenAI
+#--------------------------
+OPEN_AI_KEY = lambda: _get_env("OPEN_AI_KEY")
+
 # -------------------------
 # Mail / InReach / Saildocs
 # -------------------------

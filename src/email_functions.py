@@ -172,6 +172,7 @@ def _decode_inreach_request(raw_text: str) -> InReachRequest:
     """
 
     GRIB_PREFIX = "GRIB"
+    CHAT_PREFIX = "CHAT"
     REPLY_PREFIX = "Reply to Garmin:"
 
     logging.info("Decode InReach request: %s", raw_text)
@@ -208,6 +209,11 @@ def _decode_inreach_request(raw_text: str) -> InReachRequest:
     if request_part.upper().startswith(GRIB_PREFIX):
         request_type = "weather"
         payload_text = request_part[len(GRIB_PREFIX):].lstrip()
+
+    elif request_part.upper().startswith(CHAT_PREFIX):
+        request_type = "chat"
+        payload_text = request_part[len(CHAT_PREFIX):].lstrip()
+
     else:
         raise ValueError(f"Unknown request type: {request_part}")
 
