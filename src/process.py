@@ -75,7 +75,7 @@ async def run(
             return True
             
         # -------------------------------------------------
-        # Step 4: Send to InReach
+        # Step 3: Send to InReach
         # -------------------------------------------------
         message_parts = inreach_func.split_message(message)
         wrapped_message_parts = inreach_func.wrap_messages(message_parts)

@@ -25,7 +25,7 @@ Feel free to use and modify the code to your needs. However, keep in mind that i
     - MailboxFolder.ReadWrite.All
 
 - Hosting: Use Azure to host the code as an Azure Function.
-    - Using Visual Studio Code, you can use the Azure Package package to handle the Account and deploy Azure Functions.
+    - Using Visual Studio Code, you can use the Azure Package to handle the Account and deploy Azure Functions.
     - To test the Azure Function local, you can use the command "func start --verbose"
 
 - For ChatGPT support, an API key and available tokens needs to be added
@@ -49,9 +49,6 @@ The Azure Function receiving service routinely checks the Azure inbox at custom 
 Subsequently, the binary content of the GRIB file is extracted, compressed (zipped), and encoded using base64. This compression step effectively reduces the file size by approximately 35%. The processed data is then divided into smaller chunks, prepared for transmission back to the inReach device. The transmission occurs via a post-request, utilising the designated inReach link provided with the initial request message.
 
 **NOTE:** Base 64 encoding uses a character set of {A–Z, a–z, 0–9, +, /}, making it suitable for message transmission. While a base 85 representation could further compress the data, reducing its size by an additional 10%, it involves many special characters. These require extra attention. For instance, Rhycus faced issues with certain character combinations like '>f' that were unsendable and demanded extra handling through character shift which may result in sending more messages than anticipated.
-
-**NOTE:** As Rhycus pointed out, messages occasionally get truncated around the 130-140 character range. To circumvent this, we've capped each message to 120 characters.
-
 
 ## DECODING MESSAGE
 
